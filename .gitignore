@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+.claude/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+*.stackdump
+
+# Data outputs (large files)
+*.pkl
+*.npy
+*.csv
+!configs/*.yaml
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Training outputs
+output/
+loss_plots/
+trained_parameters/
+samples/
+tables/
+figures/
+cov_matrix/
