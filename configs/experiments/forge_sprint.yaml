@@ -1,0 +1,56 @@
+# configs/experiments/forge_sprint.yaml
+# Week 7: Forge structural modeling sprint
+# Goal: find minimal plateau-inducing overlap patterns and structural invariants
+
+experiment:
+  name: forge_sprint
+  description: "Forge structural search for plateau-inducing hypergraph configurations"
+  seed: 42
+  output_dir: results/forge_sprint/
+  log_level: INFO
+
+circuit:
+  # Small n only — Forge finite-model finding
+  family: [bounded_degree, dense, erdos_renyi]
+  n_qubits: [4, 6, 8, 10, 12]
+  n_generators: "n"
+  bounded_degree:
+    max_weight: 3
+    max_degree: 4
+  dense:
+    expected_weight: 0.5
+  erdos_renyi:
+    p_edge: [0.2, 0.5, 0.8]
+
+kernel:
+  type: gaussian
+  bandwidth: [1.0]
+
+init:
+  scheme: uniform
+  uniform:
+    low: -3.14159265
+    high: 3.14159265
+
+dataset:
+  type: product_bernoulli
+  n_samples: 1000
+
+estimation:
+  num_a_samples: 128
+  num_z_samples: 256
+  num_seeds: 20
+  use_jax: false    # small n: exact computation preferred
+  batch_size: 4
+
+forge:
+  max_n: 12
+  target_property: overlap_threshold   # find min n where generator overlap > threshold
+  timeout_sec: 120
+  export_instances: true   # serialize found instances to forge/runs/
+
+output:
+  format: jsonl
+  save_raw: true
+  figures:
+    enabled: false   # figures generated separately in notebooks

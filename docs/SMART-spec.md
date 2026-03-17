@@ -1,4 +1,4 @@
-## **SMART Execution Specification (Feb 22, 2026 → May 15, 2026\)**
+## **SMART Execution Specification (Mar 18, 2026 → May 15, 2026\)**
 
 ### **Project Name**
 
@@ -6,9 +6,9 @@
 
 ### **Time Window**
 
-**Start:** Sunday, Feb 22, 2026  
-**End:** Friday, May 15, 2026  
-**Duration:** \~12 weeks
+**Start:** Wednesday, Mar 18, 2026
+**End:** Friday, May 15, 2026
+**Duration:** \~8 weeks
 
 ---
 
@@ -23,7 +23,7 @@ From Feb 22 to May 15, we will:
    * Hypothesis-driven circuit generator (hypergraph families).  
    * Classical IQP expectation engine (for ⟨Zₐ⟩ and MMD² mixture) .  
    * Gradient/variance estimator (per-parameter and aggregate).  
-3. Execute scaling experiments across ≥ 6 circuit families and ≥ 3 initialization schemes.  
+3. Execute scaling experiments across ≥ 6 circuit families × ≥ 4 kernel types × ≥ 3 initialization schemes (including small-angle).
 4. Validate selected regimes in Qiskit:  
    * Statevector baseline  
    * Shot-based estimation  
@@ -37,8 +37,8 @@ By May 15, you will have:
 
 * **Derivations:** 1 complete derivation note for ∂θ MMD² in the IQP–MMD decomposition framework.  
 * **Pipeline:** 1 repo with end-to-end reproducible experiments \+ config-driven runs.  
-* **Experiments:** ≥ 6 circuit families × ≥ 6 n-values × ≥ 100 random seeds per setting (or justified alternative).  
-* **Scaling outputs:** ≥ 8 publication-quality figures (variance vs n; shot/noise effect).  
+* **Experiments:** ≥ 6 circuit families × ≥ 4 kernel types × ≥ 3 initialization schemes × ≥ 6 n-values × ≥ 100 random seeds per setting (or justified alternative).
+* **Scaling outputs:** ≥ 12 publication-quality figures (variance vs n per kernel; kernel comparison; shot/noise effect; init scheme comparison).
 * **Qiskit validation:** ≥ 3 comparisons (exact vs statevector vs shots; with/without noise).  
 * **Forge results:** ≥ 2 structural findings (counterexample or invariant) \+ serialized Forge models.  
 * **Writing:** Final report/thesis draft (target 40–70 pages) \+ 10–15 slide deck.
@@ -70,11 +70,22 @@ Use the definition and structure consistent with :
 
 ### **Loss**
 
-Squared MMD with Gaussian kernel bandwidth σ. Use the mixture-of-Z-words form:  
-\[  
-\\text{MMD}^2(p,q\_\\theta)=\\mathbb{E}*{a \\sim P*\\sigma}\\left\[(\\langle Z\_a\\rangle\_p \- \\langle Z\_a\\rangle\_{q\_\\theta})^2\\right\]  
-\]  
+Squared MMD with kernel k, written in mixture-of-Z-words form:
+\[
+\\text{MMD}^2(p,q\_\\theta)=\\mathbb{E}\_{a \\sim P\_k}\\left\[(\\langle Z\_a\\rangle\_p \- \\langle Z\_a\\rangle\_{q\_\\theta})^2\\right\]
+\]
 (Operationally based on Proposition-style decomposition described in .)
+
+We study four kernel families — the choice of kernel determines P_k and the spectral weighting of the Z-word mixture:
+
+| Kernel | k(x,y) | Notes |
+|---|---|---|
+| Gaussian | exp(-‖x-y‖²/2σ²) | Primary; σ is bandwidth |
+| Laplacian | exp(-‖x-y‖/σ) | Heavier tails than Gaussian |
+| Polynomial | (x·y + c)^d | Degree d controls interaction order |
+| Linear | x·y | Degenerate baseline |
+
+For each kernel, we derive the explicit MMD² expression as a function of the IQP circuit family and write the gradient ∂_{θ_i} MMD² in closed form.
 
 ### **Gradient Target**
 
@@ -83,10 +94,12 @@ Squared MMD with Gaussian kernel bandwidth σ. Use the mixture-of-Z-words form:
 
 ### **Parameter and Circuit Distributions**
 
-* θ initialization schemes:  
-  * i.i.d. uniform on (\[-\\pi,\\pi\]) (stress test)  
-  * small-angle normal ( \\mathcal{N}(0,\\sigma\_\\theta^2) )  
-  * data-dependent initialization (covariance-based) inspired by  
+* θ initialization schemes (all three are primary axes, not optional):
+  * **Uniform** U[-π,π] — stress test / worst-case
+  * **Small-angle** N(0,σ_θ²) with σ_θ ∈ {0.01, 0.1, 0.3} — main trainability hypothesis
+  * **Data-dependent** (covariance-based) — inspired by structured init literature
+
+  For each (kernel × connectivity) combination, we compare gradient variance across all three inits to determine whether small-angle initialization suppresses or avoids barren plateaus independently of circuit structure.
 * Circuit families (hypergraph generators (g\_j)):  
   * bounded-degree k-local  
   * Erdos–Renyi hyperedges  
@@ -107,12 +120,14 @@ Use 3 targets (start simple, then structured):
 
 # **3\) Weekly / Biweekly Execution Plan (Deliverables)**
 
-## **Week 1 (Feb 22–Feb 28): Scope Lock \+ Repo Skeleton**
+## **Week 1 (Mar 18–Mar 24): Scope Lock \+ Repo Skeleton**
 
 **Deliverables**
 
-* D1.1: 2-page “Scope Lock” memo:  
-  * exact model definition, loss form, gradient definitions, experiment grid  
+* D1.1: 2-page “Scope Lock” memo:
+  * exact model definition, gradient definitions, experiment grid
+  * explicit MMD² loss written out for each kernel type (Gaussian, Laplacian, polynomial, linear) and each connectivity family
+  * statement of the main barren plateau question per (kernel, connectivity, init) triple
 * D1.2: Repo structure \+ reproducibility scaffold:  
   * `src/iqp/`, `src/mmd/`, `src/experiments/`, `configs/`, `notebooks/`, `forge/`  
   * deterministic seeding, logging, results serialization (JSONL/Parquet)  
@@ -126,7 +141,7 @@ Use 3 targets (start simple, then structured):
 
 ---
 
-## **Week 2 (Feb 29–Mar 6): Correctness Validation Suite**
+## **Week 2 (Mar 25–Mar 31): Correctness Validation Suite**
 
 **Deliverables**
 
@@ -144,25 +159,29 @@ Use 3 targets (start simple, then structured):
 
 * Implement clean interfaces:  
   * `iqp_expectation(theta, hypergraph, a, num_z_samples)`  
-  * `mmd2(theta, hypergraph, dataset, sigma, num_a_samples, num_z_samples)`  
+  * `mmd2(theta, hypergraph, dataset, kernel, kernel_params, num_a_samples, num_z_samples)` — kernel is pluggable (Gaussian, Laplacian, polynomial, linear)
   * `grad_mmd2(theta, ...)` via autodiff (JAX) or analytic partials.
 
 ---
 
-## **Weeks 3–4 (Mar 7–Mar 20): Scaling Experiments v1 (Classical Exact Regime)**
+## **Weeks 3–4 (Apr 1–Apr 14): Scaling Experiments v1 (Classical Exact Regime)**
 
 **Deliverables (biweekly)**
 
-* D4.1: Experiment grid v1 completed:  
-  * Circuit families: 4  
-  * Inits: 2  
-  * n values: at least 6 (e.g., 16, 24, 32, 48, 64, 96\)  
-  * seeds per setting: ≥ 50  
-* D4.2: Scaling figures v1:  
-  * Var(∂θ\_i L) vs n for each family  
-  * aggregate plots \+ fits (exponential vs polynomial)  
-* D4.3: Interim interpretation memo:  
-  * identify candidate “trainable regimes” and “plateau regimes”  
+* D4.1: Experiment grid v1 completed:
+  * Circuit families: 4
+  * Kernel types: 4 (Gaussian, Laplacian, polynomial, linear)
+  * Inits: 3 (uniform, small-angle N(0,σ_θ²) with σ_θ ∈ {0.01,0.1,0.3}, data-dependent)
+  * n values: at least 6 (e.g., 16, 24, 32, 48, 64, 96)
+  * seeds per setting: ≥ 50
+* D4.2: Scaling figures v1:
+  * Var(∂θ_i L) vs n for each (family, kernel) pair
+  * Kernel comparison plots: for fixed connectivity, how does kernel type change scaling?
+  * Init comparison plots: for fixed (connectivity, kernel), how does small-angle init change scaling?
+  * Aggregate fits (exponential vs polynomial)
+* D4.3: Interim interpretation memo:
+  * identify candidate “trainable regimes” and “plateau regimes” per kernel
+  * answer: “does this loss function exhibit a barren plateau?” for each (kernel, connectivity) pair
   * choose 2 regimes for Qiskit validation
 
 **Method**
@@ -175,9 +194,9 @@ Use 3 targets (start simple, then structured):
 
 ---
 
-## **Weeks 5–6 (Mar 21–Apr 3): Qiskit Pipeline \+ Cross-Checks**
+## **Week 5 (Apr 15–Apr 21): Qiskit Pipeline \+ Cross-Checks**
 
-**Deliverables (biweekly)**
+**Deliverables**
 
 * D6.1: Qiskit circuit generator:  
   * hypergraph → parameterized IQP circuit builder  
@@ -201,18 +220,19 @@ Use 3 targets (start simple, then structured):
 
 ---
 
-## **Weeks 7–8 (Apr 4–Apr 17): Scaling Experiments v2 (Expanded \+ Noise Models)**
+## **Week 6 (Apr 22–Apr 28): Scaling Experiments v2 (Expanded \+ Noise Models)**
 
-**Deliverables (biweekly)**
+**Deliverables**
 
-* D8.1: Experiment grid v2 completed:  
-  * Circuit families: ≥ 6  
-  * Inits: ≥ 3 (include data-dependent init)  
-  * n values: extend to ≥ 128 (classical) where feasible  
-* D8.2: Noise model experiments (Qiskit Aer):  
-  * at least 2 noise models (depolarizing \+ readout; optionally amplitude damping)  
-  * compare variance scaling with noise on/off  
-* D8.3: Consolidated figure set v2 (target ≥ 8 figures)
+* D8.1: Experiment grid v2 completed:
+  * Circuit families: ≥ 6
+  * Kernel types: all 4 (full sweep)
+  * Inits: all 3 (including small-angle sweep over σ_θ values)
+  * n values: extend to ≥ 128 (classical) where feasible
+* D8.2: Noise model experiments (Qiskit Aer):
+  * at least 2 noise models (depolarizing + readout; optionally amplitude damping)
+  * compare variance scaling with noise on/off, per kernel type
+* D8.3: Consolidated figure set v2 (target ≥ 12 figures, including kernel-comparison and init-comparison panels)
 
 **Method**
 
@@ -222,7 +242,7 @@ Use 3 targets (start simple, then structured):
 
 ---
 
-## **Week 9 (Apr 18–Apr 24): Forge Modeling Sprint**
+## **Week 7 (Apr 29–May 5): Forge Modeling Sprint**
 
 **Deliverables**
 
@@ -242,9 +262,9 @@ Use 3 targets (start simple, then structured):
 
 ---
 
-## **Weeks 10–11 (Apr 25–May 8): Writing \+ Synthesis (Draft Complete)**
+## **Week 8 (May 6–May 11): Writing \+ Synthesis (Draft Complete)**
 
-**Deliverables (biweekly)**
+**Deliverables**
 
 * D11.1: Full draft v1 (complete narrative):  
   * Intro \+ background  
@@ -262,7 +282,7 @@ Use 3 targets (start simple, then structured):
 
 ---
 
-## **Week 12 (May 9–May 15): Finalization \+ Submission Package**
+## **Final Days (May 12–May 15): Finalization \+ Submission Package**
 
 **Deliverables**
 
@@ -275,8 +295,8 @@ Use 3 targets (start simple, then structured):
 
 **Method**
 
-* Freeze experiments by May 9\.  
-* Use May 9–15 exclusively for editing, formatting, and packaging.
+* Freeze experiments by May 11.
+* Use May 12–15 exclusively for editing, formatting, and packaging.
 
 ---
 
@@ -296,11 +316,13 @@ Use 3 targets (start simple, then structured):
 
 ## **4.2 MMD² Estimation**
 
-* Use mixture sampling over a \~ Pσ(a) per  
-* For each a:  
-  * estimate ⟨Z\_a⟩p from dataset samples  
-  * estimate ⟨Z\_a⟩qθ from IQP expectation engine  
-  * accumulate squared difference
+* Kernel is a pluggable parameter; P_k(a) is derived from the chosen kernel's spectral decomposition
+* Supported kernels: Gaussian, Laplacian, polynomial (degree d), linear
+* For each a sampled from P_k(a):
+  * estimate ⟨Z_a⟩_p from dataset samples
+  * estimate ⟨Z_a⟩_{q_θ} from IQP expectation engine
+  * accumulate squared difference weighted by kernel spectral coefficients
+* Acceptance: MMD² computed with each kernel matches brute-force for n≤10
 
 ## **4.3 Gradient Computation**
 
@@ -314,7 +336,7 @@ Acceptance:
 
 ## **4.4 Statistical Protocol**
 
-For each (family, n, init, σ):
+For each (family, kernel, n, init, kernel_params):
 
 * sample S circuits (or fixed hypergraph with varying θ, as defined)  
 * sample T θ seeds  
@@ -330,14 +352,15 @@ Minimum defaults:
 # **5\) Reporting Structure (What the final document will contain)**
 
 1. Background (IQP hardness \+ MMD \+ barren plateaus)  
-2. Problem definition (exact scaling question)  
-3. Derivation of gradient estimator  
-4. Hypothesis-driven experiment design  
-5. Classical scaling results  
-6. Qiskit validation (shots \+ noise)  
-7. Forge structural findings  
-8. Synthesis: when/why plateaus occur  
-9. Limitations and future work
+2. Problem definition (exact scaling question per kernel and connectivity)
+3. MMD² loss derivation for each kernel type and connectivity family
+4. Derivation of gradient estimator (kernel-parametric form)
+5. Hypothesis-driven experiment design
+6. Classical scaling results (connectivity × kernel × init grid)
+7. Qiskit validation (shots + noise)
+8. Forge structural findings
+9. Synthesis: when/why plateaus occur — role of kernel, connectivity, and initialization
+10. Limitations and future work
 
 ---
 
@@ -345,30 +368,36 @@ Minimum defaults:
 
 By May 15, 2026, the project is “successful” if:
 
-* You can state a clear conclusion of the form:  
-  **“Under these circuit families and initializations, Var(∂L) scales \[exponentially/polynomially\] with n; shot/noise effects \[do/do not\] reinstate exponential suppression.”**
+* You can state a clear conclusion of the form:
+  **”Under connectivity family X with kernel K and initialization I, Var(∂L) scales [exponentially/polynomially] with n; shot/noise effects [do/do not] reinstate exponential suppression.”**
+
+  The conclusion must be stated separately for each (kernel, connectivity) combination — not just for one baseline setting.
 
 and you can support it with:
 
-* ≥ 6 scaling plots  
-* ≥ 1 Qiskit shot/noise study  
+* ≥ 12 scaling plots (covering kernel × connectivity comparison and init comparison)
+* ≥ 1 Qiskit shot/noise study
 * ≥ 1 structural insight from Forge or a minimal counterexample
+* A clear answer to: “does the choice of kernel determine whether this loss exhibits a barren plateau?”
 
 ---
 
 # **7\) Immediate Next Actions (Today → 72 hours)**
 
-1. Create `ScopeLock.md` with:  
-   * circuit families list  
-   * dataset plan  
-   * exact metrics (which variance, over what randomness)  
-2. Create repo skeleton \+ configs  
-3. Implement smallest end-to-end run:  
-   * generate hypergraph  
-   * compute ⟨Z\_a⟩qθ  
-   * compute MMD² estimate  
-   * compute one gradient estimate  
+1. Create `ScopeLock.md` with:
+   * circuit families list
+   * kernel types list with explicit MMD² written out for each
+   * dataset plan
+   * exact metrics (which variance, over what randomness, which init schemes)
+   * statement: "does this loss exhibit a barren plateau?" as the organizing question for each (kernel, connectivity) pair
+2. Create repo skeleton + configs (add `kernel` as a top-level config axis alongside `family` and `init`)
+3. Implement smallest end-to-end run:
+   * generate hypergraph
+   * compute ⟨Z_a⟩_{q_θ}
+   * compute MMD² estimate with Gaussian kernel (default)
+   * compute one gradient estimate
 4. Add correctness test for n≤10 via brute force
+5. Add stub implementations for Laplacian, polynomial, and linear kernels (tested against Gaussian on trivial cases)
 
 If you want, I can also produce:
 

@@ -1,0 +1,88 @@
+# configs/base.yaml — Default base configuration
+# All experiment configs should inherit from this via YAML merge keys or
+# explicit override. Fields here are the project-wide defaults.
+
+experiment:
+  name: base
+  description: "Default base configuration"
+  seed: 42
+  output_dir: results/
+  log_level: INFO
+
+circuit:
+  family: bounded_degree
+  n_qubits: [16, 24, 32, 48, 64, 96]
+  n_generators: "n"
+  bounded_degree:
+    max_weight: 3
+    max_degree: 4
+  erdos_renyi:
+    p_edge: [0.1, 0.5]
+  lattice:
+    dimension: 1
+    range: 1
+  dense:
+    expected_weight: 0.5
+  community:
+    n_blocks: 4
+    p_intra: 0.8
+    p_inter: 0.05
+  symmetric:
+    parity: even
+
+kernel:
+  type: gaussian
+  bandwidth: [0.5, 1.0, 2.0]  # will be scaled by median pairwise distance
+  polynomial:
+    degree: 2
+    constant: 1.0
+
+init:
+  scheme: uniform
+  uniform:
+    low: -3.14159265
+    high: 3.14159265
+  small_angle:
+    std: [0.01, 0.1, 0.3]
+  data_dependent:
+    dataset: ising
+
+dataset:
+  type: product_bernoulli
+  n_samples: 10000
+  ising:
+    beta: 1.0
+    coupling_std: 1.0
+    topology: grid_2d
+  binary_mixture:
+    n_modes: 4
+    noise: 0.1
+
+estimation:
+  num_a_samples: 512
+  num_z_samples: 1024
+  num_seeds: 100
+  use_jax: true
+  batch_size: 10
+
+qiskit:
+  backend: statevector
+  n_shots: [1000, 10000, 100000]
+  max_n: 20
+  noise:
+    enabled: false
+    model: depolarizing
+    error_rate: [0.001, 0.005, 0.01]
+
+forge:
+  max_n: 12
+  target_property: overlap_threshold
+  timeout_sec: 60
+
+output:
+  format: jsonl
+  save_raw: false
+  figures:
+    enabled: true
+    format: pdf
+    dpi: 150

@@ -1,0 +1,125 @@
+# configs/schema.yaml — Experiment configuration schema
+# All experiment YAML files must conform to this schema.
+# Fields marked [required] have no default and must be specified.
+
+# ---------------------------------------------------------------------------
+# experiment — top-level metadata
+# ---------------------------------------------------------------------------
+experiment:
+  name: str           # [required] short identifier, used in output paths
+  description: str    # free-text description
+  seed: int           # global RNG seed (default: 42)
+  output_dir: str     # results output directory (default: results/)
+  log_level: str      # DEBUG | INFO | WARNING (default: INFO)
+
+# ---------------------------------------------------------------------------
+# circuit — IQP hypergraph family and size sweep
+# ---------------------------------------------------------------------------
+circuit:
+  family: str         # [required] one of: bounded_degree | erdos_renyi | lattice |
+                      #   dense | community | symmetric
+  n_qubits: list[int] # [required] list of qubit counts to sweep, e.g. [16,24,32,48,64,96]
+  n_generators: str   # formula for m given n: "c*n" | "c*n*log(n)" | int literal
+                      # default: "n"  (i.e., m = n)
+
+  # Family-specific parameters
+  bounded_degree:
+    max_weight: int   # k in k-local (default: 3)
+    max_degree: int   # max qubit degree Δ (default: 4)
+
+  erdos_renyi:
+    p_edge: list[float]  # edge inclusion probability per qubit; sweep values
+
+  lattice:
+    dimension: int    # 1 or 2 (default: 1)
+    range: int        # interaction range r (default: 1)
+
+  dense:
+    expected_weight: float  # expected |g_j|/n (default: 0.5)
+
+  community:
+    n_blocks: int     # B number of blocks (default: 4)
+    p_intra: float    # intra-block probability (default: 0.8)
+    p_inter: float    # inter-block probability (default: 0.05)
+
+  symmetric:
+    parity: str       # "even" | "odd" (default: "even")
+
+# ---------------------------------------------------------------------------
+# kernel — MMD² spectral kernel
+# ---------------------------------------------------------------------------
+kernel:
+  type: str           # [required] one of: gaussian | laplacian | polynomial | linear
+  bandwidth: list[float]  # σ values to sweep (ignored for linear)
+                          # for gaussian/laplacian: multiple σ tested in parallel
+  polynomial:
+    degree: int       # d (default: 2)
+    constant: float   # c in (x·y+c)^d (default: 1.0)
+
+# ---------------------------------------------------------------------------
+# initialization — parameter initialization scheme
+# ---------------------------------------------------------------------------
+init:
+  scheme: str         # [required] one of: uniform | small_angle | data_dependent
+  uniform:
+    low: float        # default: -3.14159
+    high: float       # default: 3.14159
+  small_angle:
+    std: list[float]  # σ_θ values to sweep, e.g. [0.01, 0.1, 0.3]
+  data_dependent:
+    dataset: str      # dataset key to use for covariance init
+
+# ---------------------------------------------------------------------------
+# dataset — target distribution p(x)
+# ---------------------------------------------------------------------------
+dataset:
+  type: str           # [required] one of: product_bernoulli | ising | binary_mixture
+  n_samples: int      # number of samples from p (default: 10000)
+  ising:
+    beta: float       # inverse temperature (default: 1.0)
+    coupling_std: float  # J_ij ~ N(0, coupling_std²/n) (default: 1.0)
+    topology: str     # "grid_2d" | "erdos_renyi" (default: "grid_2d")
+  binary_mixture:
+    n_modes: int      # K number of modes (default: 4)
+    noise: float      # ε Gaussian noise before binarizing (default: 0.1)
+
+# ---------------------------------------------------------------------------
+# estimation — computational budget
+# ---------------------------------------------------------------------------
+estimation:
+  num_a_samples: int  # Z-word samples for MMD² mixture (default: 512)
+  num_z_samples: int  # Bitstring samples for IQP expectation (default: 1024)
+  num_seeds: int      # θ seeds for variance estimation (default: 100)
+  use_jax: bool       # use JAX for autodiff gradients (default: true)
+  batch_size: int     # parallel seeds per JAX call (default: 10)
+
+# ---------------------------------------------------------------------------
+# qiskit — Qiskit validation settings (only for run_qiskit experiments)
+# ---------------------------------------------------------------------------
+qiskit:
+  backend: str        # "statevector" | "aer_simulator" | "ibm_<device>"
+  n_shots: list[int]  # shot counts to compare, e.g. [1000, 10000, 100000]
+  max_n: int          # max n for Qiskit (statevector limit, default: 20)
+  noise:
+    enabled: bool     # (default: false)
+    model: str        # "depolarizing" | "readout" | "combined"
+    error_rate: list[float]  # error rates ε to sweep
+
+# ---------------------------------------------------------------------------
+# forge — Forge structural modeling settings
+# ---------------------------------------------------------------------------
+forge:
+  max_n: int          # max n for Forge finite-model finding (default: 12)
+  target_property: str  # structural property to search for
+  timeout_sec: int    # per-query timeout (default: 60)
+
+# ---------------------------------------------------------------------------
+# output — serialization and plotting
+# ---------------------------------------------------------------------------
+output:
+  format: str         # "jsonl" | "parquet" (default: "jsonl")
+  save_raw: bool      # save per-seed raw gradients (default: false, large)
+  figures:
+    enabled: bool     # generate plots (default: true)
+    format: str       # "pdf" | "png" | "svg" (default: "pdf")
+    dpi: int          # (default: 150)

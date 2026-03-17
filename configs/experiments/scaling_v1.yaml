@@ -1,0 +1,61 @@
+# configs/experiments/scaling_v1.yaml
+# Week 3-4: Scaling experiments v1 — classical exact regime
+# Grid: 4 families × 4 kernels × 3 inits × 6 n-values × 50 seeds
+
+experiment:
+  name: scaling_v1
+  description: "Scaling experiment v1: gradient variance vs n for all (family, kernel, init) combinations"
+  seed: 42
+  output_dir: results/scaling_v1/
+  log_level: INFO
+
+circuit:
+  family: [bounded_degree, erdos_renyi, lattice, dense]  # 4 families for v1
+  n_qubits: [16, 24, 32, 48, 64, 96]
+  n_generators: "n"
+  bounded_degree:
+    max_weight: 3
+    max_degree: 4
+  erdos_renyi:
+    p_edge: [0.1]   # sparse ER only for v1; expand in v2
+  lattice:
+    dimension: 1
+    range: 1
+  dense:
+    expected_weight: 0.5
+
+kernel:
+  type: [gaussian, laplacian, polynomial, linear]
+  bandwidth: [0.5, 1.0, 2.0]  # relative to median pairwise distance
+  polynomial:
+    degree: 2
+    constant: 1.0
+
+init:
+  scheme: [uniform, small_angle, data_dependent]
+  uniform:
+    low: -3.14159265
+    high: 3.14159265
+  small_angle:
+    std: [0.01, 0.1, 0.3]
+  data_dependent:
+    dataset: product_bernoulli
+
+dataset:
+  type: product_bernoulli
+  n_samples: 10000
+
+estimation:
+  num_a_samples: 512
+  num_z_samples: 1024
+  num_seeds: 50          # ≥50 for v1; increase to 100 in v2
+  use_jax: true
+  batch_size: 10
+
+output:
+  format: jsonl
+  save_raw: false
+  figures:
+    enabled: true
+    format: pdf
+    dpi: 150

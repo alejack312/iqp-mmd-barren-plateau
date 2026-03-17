@@ -1,0 +1,32 @@
+# Core scientific stack
+numpy>=1.24
+scipy>=1.11
+pandas>=2.0
+matplotlib>=3.7
+seaborn>=0.13
+
+# JAX (CPU) — for autodiff through Monte Carlo
+jax>=0.4.20
+jaxlib>=0.4.20
+
+# Config
+pyyaml>=6.0
+
+# Graph / hypergraph
+networkx>=3.0
+
+# Property-based testing
+hypothesis>=6.90
+
+# Qiskit (optional — only needed for run_qiskit experiments)
+# Uncomment to install:
+# qiskit>=1.0
+# qiskit-aer>=0.14
+
+# Dev tools
+pytest>=7.0
+ruff>=0.3
+
+# Notebook support
+jupyterlab>=4.0
+ipykernel>=6.0

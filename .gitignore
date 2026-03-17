@@ -30,6 +30,17 @@ Thumbs.db
 *.csv
 !configs/*.yaml
 
+# Experiment results (large, regenerable)
+results/**/*.jsonl
+results/**/*.parquet
+results/**/*.pdf
+results/**/*.png
+!results/.gitkeep
+
+# Forge run outputs
+forge/runs/*.frg
+forge/runs/*.xml
+
 # Jupyter
 .ipynb_checkpoints/
 
@@ -41,3 +52,24 @@ samples/
 tables/
 figures/
 cov_matrix/
+
+# Logs
+*.log
+logs/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Binary / large data formats
+*.h5
+*.hdf5
+*.zarr
+*.pt
+*.safetensors
+
+# Temp
+*.tmp
+*.temp
+.cache/
