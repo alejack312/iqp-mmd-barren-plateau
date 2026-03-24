@@ -23,7 +23,7 @@ From Feb 22 to May 15, we will:
    * Hypothesis-driven circuit generator (hypergraph families).  
    * Classical IQP expectation engine (for ⟨Zₐ⟩ and MMD² mixture) .  
    * Gradient/variance estimator (per-parameter and aggregate).  
-3. Execute scaling experiments across ≥ 6 circuit families × ≥ 4 kernel types × ≥ 3 initialization schemes (including small-angle).
+3. Execute scaling experiments across 4 circuit families × 3 kernel types × ≥ 3 initialization schemes (including small-angle), with primary focus on Gaussian kernel × all 4 connectivity families before extending to other kernels.
 4. Validate selected regimes in Qiskit:  
    * Statevector baseline  
    * Shot-based estimation  
@@ -37,7 +37,7 @@ By May 15, you will have:
 
 * **Derivations:** 1 complete derivation note for ∂θ MMD² in the IQP–MMD decomposition framework.  
 * **Pipeline:** 1 repo with end-to-end reproducible experiments \+ config-driven runs.  
-* **Experiments:** ≥ 6 circuit families × ≥ 4 kernel types × ≥ 3 initialization schemes × ≥ 6 n-values × ≥ 100 random seeds per setting (or justified alternative).
+* **Experiments:** 4 circuit families × 3 kernel types × ≥ 3 initialization schemes × ≥ 6 n-values × ≥ 100 random seeds per setting (or justified alternative). Phase 1: Gaussian kernel × 4 connectivity families (complete); Phase 2: Laplacian + multi-scale Gaussian.
 * **Scaling outputs:** ≥ 12 publication-quality figures (variance vs n per kernel; kernel comparison; shot/noise effect; init scheme comparison).
 * **Qiskit validation:** ≥ 3 comparisons (exact vs statevector vs shots; with/without noise).  
 * **Forge results:** ≥ 2 structural findings (counterexample or invariant) \+ serialized Forge models.  
@@ -76,16 +76,15 @@ Squared MMD with kernel k, written in mixture-of-Z-words form:
 \]
 (Operationally based on Proposition-style decomposition described in .)
 
-We study four kernel families — the choice of kernel determines P_k and the spectral weighting of the Z-word mixture:
+We study three kernel families — the choice of kernel determines P_k and the spectral weighting of the Z-word mixture:
 
-| Kernel | k(x,y) | Notes |
-|---|---|---|
-| Gaussian | exp(-‖x-y‖²/2σ²) | Primary; σ is bandwidth |
-| Laplacian | exp(-‖x-y‖/σ) | Heavier tails than Gaussian |
-| Polynomial | (x·y + c)^d | Degree d controls interaction order |
-| Linear | x·y | Degenerate baseline |
+| Kernel | k(x,y) | Notes | Priority |
+|---|---|---|---|
+| Gaussian | exp(-‖x-y‖²/2σ²) | Primary; σ is bandwidth axis | Phase 1 |
+| Laplacian | exp(-‖x-y‖/σ) | Heavier tails than Gaussian | Phase 2 |
+| Multi-scale Gaussian | Σ_i w_i exp(-‖x-y‖²/2σ_i²) | Mixture of Gaussians; captures multi-scale correlations | Phase 2 |
 
-For each kernel, we derive the explicit MMD² expression as a function of the IQP circuit family and write the gradient ∂_{θ_i} MMD² in closed form.
+**Study order:** The Gaussian kernel is analysed exhaustively across all four circuit families first. Laplacian and multi-scale Gaussian are added once the Gaussian regime is fully characterised. For each kernel, we derive the explicit MMD² expression as a function of the IQP circuit family and write the gradient ∂_{θ_i} MMD² in closed form.
 
 ### **Gradient Target**
 
@@ -100,13 +99,11 @@ For each kernel, we derive the explicit MMD² expression as a function of the IQ
   * **Data-dependent** (covariance-based) — inspired by structured init literature
 
   For each (kernel × connectivity) combination, we compare gradient variance across all three inits to determine whether small-angle initialization suppresses or avoids barren plateaus independently of circuit structure.
-* Circuit families (hypergraph generators (g\_j)):  
-  * bounded-degree k-local  
-  * Erdos–Renyi hyperedges  
-  * lattice-local  
-  * dense/complete-ish  
-  * community-structured  
-  * symmetry-constrained (global bitflip symmetry class; optional)
+* Circuit families (hypergraph generators (g\_j)):
+  * **product state** — single-qubit Z rotations only (degree-1 hyperedges; baseline, no entanglement)
+  * **2D lattice** — nearest-neighbour ZZ interactions on a square lattice
+  * **sparse Erdős–Rényi** — random hyperedges with bounded expected degree
+  * **complete graph** — all-to-all ZZ interactions (dense limit)
 
 ### **Datasets p(x)**
 
@@ -126,8 +123,9 @@ Use 3 targets (start simple, then structured):
 
 * D1.1: 2-page “Scope Lock” memo:
   * exact model definition, gradient definitions, experiment grid
-  * explicit MMD² loss written out for each kernel type (Gaussian, Laplacian, polynomial, linear) and each connectivity family
-  * statement of the main barren plateau question per (kernel, connectivity, init) triple
+  * IQP connectivity families: product state, 2D lattice, sparse Erdős–Rényi, complete graph
+  * explicit MMD² loss written out for Gaussian kernel (primary) and each connectivity family; stubs for Laplacian and multi-scale Gaussian
+  * statement of the main barren plateau question per (connectivity, bandwidth σ, init) triple under Gaussian kernel
 * D1.2: Repo structure \+ reproducibility scaffold:  
   * `src/iqp/`, `src/mmd/`, `src/experiments/`, `configs/`, `notebooks/`, `forge/`  
   * deterministic seeding, logging, results serialization (JSONL/Parquet)  
@@ -168,21 +166,22 @@ Use 3 targets (start simple, then structured):
 
 **Deliverables (biweekly)**
 
-* D4.1: Experiment grid v1 completed:
-  * Circuit families: 4
-  * Kernel types: 4 (Gaussian, Laplacian, polynomial, linear)
+* D4.1: Experiment grid v1 completed (Phase 1 — Gaussian kernel):
+  * Circuit families: 4 (product state, 2D lattice, sparse Erdős–Rényi, complete graph)
+  * Kernel: Gaussian with σ ∈ {0.1, 0.5, 1.0, 2.0, 5.0} (bandwidth sweep)
   * Inits: 3 (uniform, small-angle N(0,σ_θ²) with σ_θ ∈ {0.01,0.1,0.3}, data-dependent)
   * n values: at least 6 (e.g., 16, 24, 32, 48, 64, 96)
   * seeds per setting: ≥ 50
 * D4.2: Scaling figures v1:
-  * Var(∂θ_i L) vs n for each (family, kernel) pair
-  * Kernel comparison plots: for fixed connectivity, how does kernel type change scaling?
-  * Init comparison plots: for fixed (connectivity, kernel), how does small-angle init change scaling?
+  * Var(∂θ_i L) vs n for each (family, σ) pair under Gaussian kernel
+  * Connectivity comparison plots: for fixed σ, how does circuit family change scaling?
+  * Bandwidth comparison plots: for fixed connectivity, how does σ change scaling?
+  * Init comparison plots: for fixed (connectivity, σ), how does small-angle init change scaling?
   * Aggregate fits (exponential vs polynomial)
 * D4.3: Interim interpretation memo:
-  * identify candidate “trainable regimes” and “plateau regimes” per kernel
-  * answer: “does this loss function exhibit a barren plateau?” for each (kernel, connectivity) pair
-  * choose 2 regimes for Qiskit validation
+  * identify candidate “trainable regimes” and “plateau regimes” per connectivity × bandwidth
+  * answer: “does this loss function exhibit a barren plateau?” for each (connectivity, σ) pair
+  * choose 2 regimes for Qiskit validation; decide whether to proceed to Laplacian/multi-scale Gaussian
 
 **Method**
 
@@ -224,9 +223,9 @@ Use 3 targets (start simple, then structured):
 
 **Deliverables**
 
-* D8.1: Experiment grid v2 completed:
-  * Circuit families: ≥ 6
-  * Kernel types: all 4 (full sweep)
+* D8.1: Experiment grid v2 completed (Phase 2 — Laplacian + multi-scale Gaussian):
+  * Circuit families: all 4 (same grid as v1)
+  * Kernel types: add Laplacian and multi-scale Gaussian (compare against Gaussian baseline from v1)
   * Inits: all 3 (including small-angle sweep over σ_θ values)
   * n values: extend to ≥ 128 (classical) where feasible
 * D8.2: Noise model experiments (Qiskit Aer):
@@ -317,7 +316,7 @@ Use 3 targets (start simple, then structured):
 ## **4.2 MMD² Estimation**
 
 * Kernel is a pluggable parameter; P_k(a) is derived from the chosen kernel's spectral decomposition
-* Supported kernels: Gaussian, Laplacian, polynomial (degree d), linear
+* Supported kernels: Gaussian (primary, bandwidth σ), Laplacian, multi-scale Gaussian (mixture weights w_i, bandwidths σ_i)
 * For each a sampled from P_k(a):
   * estimate ⟨Z_a⟩_p from dataset samples
   * estimate ⟨Z_a⟩_{q_θ} from IQP expectation engine
@@ -353,8 +352,8 @@ Minimum defaults:
 
 1. Background (IQP hardness \+ MMD \+ barren plateaus)  
 2. Problem definition (exact scaling question per kernel and connectivity)
-3. MMD² loss derivation for each kernel type and connectivity family
-4. Derivation of gradient estimator (kernel-parametric form)
+3. MMD² loss derivation for Gaussian kernel (primary) across all four connectivity families; Laplacian and multi-scale Gaussian where complete
+4. Derivation of gradient estimator (kernel-parametric form, with bandwidth σ as explicit axis)
 5. Hypothesis-driven experiment design
 6. Classical scaling results (connectivity × kernel × init grid)
 7. Qiskit validation (shots + noise)
@@ -369,39 +368,49 @@ Minimum defaults:
 By May 15, 2026, the project is “successful” if:
 
 * You can state a clear conclusion of the form:
-  **”Under connectivity family X with kernel K and initialization I, Var(∂L) scales [exponentially/polynomially] with n; shot/noise effects [do/do not] reinstate exponential suppression.”**
+  **”Under connectivity family X with kernel K (and bandwidth σ) and initialization I, Var(∂L) scales [exponentially/polynomially] with n; shot/noise effects [do/do not] reinstate exponential suppression.”**
 
-  The conclusion must be stated separately for each (kernel, connectivity) combination — not just for one baseline setting.
+  The conclusion must be stated for each of the four connectivity families under the Gaussian kernel (primary), and where time permits, for Laplacian and multi-scale Gaussian.
 
 and you can support it with:
 
-* ≥ 12 scaling plots (covering kernel × connectivity comparison and init comparison)
+* ≥ 12 scaling plots (covering bandwidth × connectivity comparison under Gaussian; kernel comparison panels where available; init comparison)
 * ≥ 1 Qiskit shot/noise study
 * ≥ 1 structural insight from Forge or a minimal counterexample
-* A clear answer to: “does the choice of kernel determine whether this loss exhibits a barren plateau?”
+* A clear answer to: “does the choice of bandwidth (and kernel family) determine whether this MMD loss exhibits a barren plateau?”
 
 ---
 
 # **7\) Immediate Next Actions (Today → 72 hours)**
 
 1. Create `ScopeLock.md` with:
-   * circuit families list
-   * kernel types list with explicit MMD² written out for each
+   * circuit families list (product state, 2D lattice, sparse Erdős–Rényi, complete graph)
+   * kernel types list with explicit MMD² written out for Gaussian (primary) + Laplacian + multi-scale Gaussian
    * dataset plan
    * exact metrics (which variance, over what randomness, which init schemes)
-   * statement: "does this loss exhibit a barren plateau?" as the organizing question for each (kernel, connectivity) pair
-2. Create repo skeleton + configs (add `kernel` as a top-level config axis alongside `family` and `init`)
+   * statement: "does this loss exhibit a barren plateau?" as the organizing question for each (connectivity, bandwidth σ) pair under Gaussian kernel
+2. Create repo skeleton + configs (axes: `family`, `kernel`, `bandwidth`, `init`)
 3. Implement smallest end-to-end run:
-   * generate hypergraph
+   * generate hypergraph (start with product state and complete graph as extremes)
    * compute ⟨Z_a⟩_{q_θ}
-   * compute MMD² estimate with Gaussian kernel (default)
+   * compute MMD² estimate with Gaussian kernel (primary)
    * compute one gradient estimate
 4. Add correctness test for n≤10 via brute force
-5. Add stub implementations for Laplacian, polynomial, and linear kernels (tested against Gaussian on trivial cases)
+5. Add stub implementations for Laplacian and multi-scale Gaussian kernels (tested against Gaussian on trivial cases)
 
 If you want, I can also produce:
 
-* A concrete `configs/` schema (YAML) for all experiment axes,  
-* A minimal folder blueprint for the repo,  
+* A concrete `configs/` schema (YAML) for all experiment axes,
+* A minimal folder blueprint for the repo,
 * A template for the thesis/report structure with section-by-section bullet points.
+
+---
+
+# **8\) Key References**
+
+1. Rudolph, M. S., Lerch, S., Thanasilp, S., Kiss, O., Shaya, O., Vallecorsa, S., Grossi, M., & Holmes, Z. (2023). *Trainability barriers and opportunities in quantum generative modeling*. arXiv:2305.02881. — Establishes that implicit MMD loss avoids the barren-plateau flavour introduced by explicit losses (e.g., KL divergence).
+
+2. Larocca, M., Thanasilp, S., Wang, S., Sharma, K., Biamonte, J., Coles, P. J., Cincio, L., McClean, J. R., Holmes, Z., & Cerezo, M. (2024). *Barren Plateaus in Variational Quantum Computing*. Nature Reviews Physics 7, 174–189. arXiv:2405.00781. — Review framing BPs as average-case, curse-of-dimensionality statements that do not preclude trainable valleys.
+
+3. Mhiri, H., Puig, R., Lerch, S., Rudolph, M. S., Chotibut, T., Thanasilp, S., & Holmes, Z. (2025). *A unifying account of warm start guarantees for patches of quantum landscapes*. arXiv:2502.07889. — Shows absence of BPs for perturbations around favourable starting points; motivates small-angle initialization study.
 

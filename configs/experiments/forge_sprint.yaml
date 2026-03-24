@@ -11,14 +11,13 @@ experiment:
 
 circuit:
   # Small n only — Forge finite-model finding
-  family: [bounded_degree, dense, erdos_renyi]
+  # Search for plateau-inducing patterns across primary connectivity families
+  family: [product_state, lattice, erdos_renyi, complete_graph]
   n_qubits: [4, 6, 8, 10, 12]
-  n_generators: "n"
-  bounded_degree:
-    max_weight: 3
-    max_degree: 4
-  dense:
-    expected_weight: 0.5
+  n_generators: "n"   # ignored for product_state and complete_graph
+  lattice:
+    dimension: 2
+    range: 1
   erdos_renyi:
     p_edge: [0.2, 0.5, 0.8]
 

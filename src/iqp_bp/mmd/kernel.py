@@ -157,6 +157,58 @@ def _poly_coeff(w: int, degree: int, constant: float) -> float:
 
 
 # ---------------------------------------------------------------------------
+# Multi-scale Gaussian (mixture of Gaussians)
+# ---------------------------------------------------------------------------
+
+def multi_scale_gaussian_kernel(
+    x: np.ndarray,
+    y: np.ndarray,
+    sigmas: list[float],
+    weights: list[float] | None = None,
+) -> float:
+    """k(x,y) = Σ_i w_i * exp(-H(x,y) / σ_i²).
+
+    Args:
+        sigmas: list of bandwidth values σ_i.
+        weights: mixture weights (default: uniform 1/K).
+    """
+    hamming = float(np.sum(x != y))
+    w = np.array(weights if weights is not None else [1.0 / len(sigmas)] * len(sigmas))
+    w = w / w.sum()
+    return float(sum(wi * np.exp(-hamming / s**2) for wi, s in zip(w, sigmas)))
+
+
+def multi_scale_gaussian_sample_a(
+    n: int,
+    num_a_samples: int,
+    sigmas: list[float],
+    weights: list[float] | None = None,
+    rng: np.random.Generator | None = None,
+) -> np.ndarray:
+    """Sample Z-word bitmasks a ~ P_MSG(a; sigmas, weights).
+
+    Mixture-of-Gaussians: pick component i ~ Categorical(weights),
+    then sample a from gaussian_sample_a with σ = sigmas[i].
+
+    Returns:
+        a_samples: shape (num_a_samples, n), dtype uint8
+    """
+    if rng is None:
+        rng = np.random.default_rng()
+    w = np.array(weights if weights is not None else [1.0 / len(sigmas)] * len(sigmas), dtype=float)
+    w = w / w.sum()
+
+    component_indices = rng.choice(len(sigmas), size=num_a_samples, p=w)
+    result = np.zeros((num_a_samples, n), dtype=np.uint8)
+    for i, sigma in enumerate(sigmas):
+        mask = component_indices == i
+        count = int(mask.sum())
+        if count > 0:
+            result[mask] = gaussian_sample_a(n=n, num_a_samples=count, sigma=sigma, rng=rng)
+    return result
+
+
+# ---------------------------------------------------------------------------
 # Linear
 # ---------------------------------------------------------------------------
 
@@ -184,8 +236,11 @@ def linear_sample_a(
 # ---------------------------------------------------------------------------
 
 KERNEL_SAMPLERS = {
+    # Primary kernels (supervisor scope, Mar 2026)
     "gaussian": gaussian_sample_a,
     "laplacian": laplacian_sample_a,
+    "multi_scale_gaussian": multi_scale_gaussian_sample_a,
+    # Legacy kernels (kept for reference, not in primary sweep)
     "polynomial": polynomial_sample_a,
     "linear": linear_sample_a,
 }

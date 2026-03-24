@@ -11,22 +11,17 @@ experiment:
 
 circuit:
   # Restrict to families and sizes feasible for Qiskit statevector
-  family: [bounded_degree, lattice]   # 2 regimes: one expected trainable, one BP
+  # Choose two contrasting regimes: product_state (no entanglement) vs complete_graph (maximal)
+  family: [product_state, complete_graph]
   n_qubits: [8, 10, 12, 14, 16, 20]  # statevector feasible
-  n_generators: "n"
-  bounded_degree:
-    max_weight: 3
-    max_degree: 4
+  n_generators: "n"   # ignored for product_state and complete_graph
   lattice:
-    dimension: 1
+    dimension: 2
     range: 1
 
 kernel:
   type: gaussian
-  bandwidth: [1.0]   # single bandwidth for validation
-  polynomial:
-    degree: 2
-    constant: 1.0
+  bandwidth: [1.0]   # single bandwidth for validation cross-check
 
 init:
   scheme: uniform

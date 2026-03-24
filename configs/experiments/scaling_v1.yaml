@@ -1,35 +1,28 @@
 # configs/experiments/scaling_v1.yaml
-# Week 3-4: Scaling experiments v1 — classical exact regime
-# Grid: 4 families × 4 kernels × 3 inits × 6 n-values × 50 seeds
+# Week 3-4: Scaling experiments v1 — classical exact regime (Phase 1)
+# Phase 1: Gaussian kernel × 4 connectivity families × 3 inits × 6 n-values × 50 seeds
+# Phase 2 (scaling_v2.yaml): add Laplacian + multi_scale_gaussian
 
 experiment:
   name: scaling_v1
-  description: "Scaling experiment v1: gradient variance vs n for all (family, kernel, init) combinations"
+  description: "Scaling v1 (Phase 1): gradient variance vs n, Gaussian kernel × all 4 connectivity families"
   seed: 42
   output_dir: results/scaling_v1/
   log_level: INFO
 
 circuit:
-  family: [bounded_degree, erdos_renyi, lattice, dense]  # 4 families for v1
+  family: [product_state, lattice, erdos_renyi, complete_graph]  # 4 primary families
   n_qubits: [16, 24, 32, 48, 64, 96]
-  n_generators: "n"
-  bounded_degree:
-    max_weight: 3
-    max_degree: 4
-  erdos_renyi:
-    p_edge: [0.1]   # sparse ER only for v1; expand in v2
+  n_generators: "n"   # ignored for product_state and complete_graph
   lattice:
-    dimension: 1
+    dimension: 2      # 2D nearest-neighbour lattice
     range: 1
-  dense:
-    expected_weight: 0.5
+  erdos_renyi:
+    p_edge: [0.1]     # sparse ER
 
 kernel:
-  type: [gaussian, laplacian, polynomial, linear]
-  bandwidth: [0.5, 1.0, 2.0]  # relative to median pairwise distance
-  polynomial:
-    degree: 2
-    constant: 1.0
+  type: [gaussian]    # Phase 1: Gaussian only; bandwidth is the primary sweep axis
+  bandwidth: [0.1, 0.5, 1.0, 2.0, 5.0]
 
 init:
   scheme: [uniform, small_angle, data_dependent]

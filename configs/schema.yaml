@@ -16,23 +16,32 @@ experiment:
 # circuit — IQP hypergraph family and size sweep
 # ---------------------------------------------------------------------------
 circuit:
-  family: str         # [required] one of: bounded_degree | erdos_renyi | lattice |
-                      #   dense | community | symmetric
+  family: str         # [required] primary families: product_state | lattice |
+                      #   erdos_renyi | complete_graph
+                      # legacy (not in primary sweep): bounded_degree | dense |
+                      #   community | symmetric
   n_qubits: list[int] # [required] list of qubit counts to sweep, e.g. [16,24,32,48,64,96]
   n_generators: str   # formula for m given n: "c*n" | "c*n*log(n)" | int literal
                       # default: "n"  (i.e., m = n)
+                      # NOTE: product_state always uses m=n; complete_graph always
+                      # uses m=n*(n-1)//2; this field is ignored for those families.
 
   # Family-specific parameters
-  bounded_degree:
-    max_weight: int   # k in k-local (default: 3)
-    max_degree: int   # max qubit degree Δ (default: 4)
+  product_state: {}   # no parameters; m=n fixed
+
+  lattice:
+    dimension: int    # 1 or 2 (use 2 for 2D lattice study; default: 2)
+    range: int        # interaction range r (default: 1)
 
   erdos_renyi:
     p_edge: list[float]  # edge inclusion probability per qubit; sweep values
 
-  lattice:
-    dimension: int    # 1 or 2 (default: 1)
-    range: int        # interaction range r (default: 1)
+  complete_graph: {}  # no parameters; m=n*(n-1)//2 fixed
+
+  # Legacy family parameters (kept for reference)
+  bounded_degree:
+    max_weight: int   # k in k-local (default: 3)
+    max_degree: int   # max qubit degree Δ (default: 4)
 
   dense:
     expected_weight: float  # expected |g_j|/n (default: 0.5)
@@ -49,9 +58,15 @@ circuit:
 # kernel — MMD² spectral kernel
 # ---------------------------------------------------------------------------
 kernel:
-  type: str           # [required] one of: gaussian | laplacian | polynomial | linear
-  bandwidth: list[float]  # σ values to sweep (ignored for linear)
-                          # for gaussian/laplacian: multiple σ tested in parallel
+  type: str           # [required] primary: gaussian | laplacian | multi_scale_gaussian
+                      # legacy (not in primary sweep): polynomial | linear
+  bandwidth: list[float]  # σ values to sweep for gaussian/laplacian
+                          # primary axis: [0.1, 0.5, 1.0, 2.0, 5.0]
+  multi_scale_gaussian:
+    sigmas: list[float]   # bandwidth values for each component, e.g. [0.5, 1.0, 2.0]
+    weights: list[float]  # mixture weights (default: uniform); must sum to 1
+
+  # Legacy kernel parameters
   polynomial:
     degree: int       # d (default: 2)
     constant: float   # c in (x·y+c)^d (default: 1.0)

@@ -115,6 +115,42 @@ def dense(
     return (rng.random((m, n)) < expected_weight).astype(np.uint8)
 
 
+def product_state(
+    n: int,
+    **kwargs,
+) -> np.ndarray:
+    """Product state IQP: single-qubit Z rotations only.
+
+    Generator matrix G = I_n: one weight-1 generator per qubit.
+    No entanglement; baseline for connectivity comparisons.
+    m is always n (one gate per qubit); any passed m is ignored.
+
+    Returns:
+        G: ndarray of shape (n, n), dtype uint8
+    """
+    return np.eye(n, dtype=np.uint8)
+
+
+def complete_graph(
+    n: int,
+    **kwargs,
+) -> np.ndarray:
+    """Complete-graph IQP: all-to-all ZZ interactions.
+
+    Generator matrix has C(n,2) rows, one for each qubit pair (i,j).
+    m is always n*(n-1)//2; any passed m is ignored.
+
+    Returns:
+        G: ndarray of shape (n*(n-1)//2, n), dtype uint8
+    """
+    pairs = [(i, j) for i in range(n) for j in range(i + 1, n)]
+    G = np.zeros((len(pairs), n), dtype=np.uint8)
+    for k, (i, j) in enumerate(pairs):
+        G[k, i] = 1
+        G[k, j] = 1
+    return G
+
+
 def community(
     n: int,
     m: int,
@@ -174,9 +210,13 @@ def symmetric(
 
 
 FAMILIES: dict[str, callable] = {
-    "bounded_degree": bounded_degree,
+    # Primary study families (supervisor scope, Mar 2026)
+    "product_state": product_state,
+    "lattice": lattice,          # use dimension=2, range_=1 for 2D lattice
     "erdos_renyi": erdos_renyi,
-    "lattice": lattice,
+    "complete_graph": complete_graph,
+    # Legacy / auxiliary families (kept for reference, not in primary sweep)
+    "bounded_degree": bounded_degree,
     "dense": dense,
     "community": community,
     "symmetric": symmetric,
