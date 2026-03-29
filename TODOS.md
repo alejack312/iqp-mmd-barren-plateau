@@ -15,19 +15,29 @@ How to read this file:
 - `Ready now` means the task does not depend on any other current TODO in `src/iqp_bp`.
 - `Depends on` means the task should be done after the listed TODO IDs.
 - IDs are stable planning labels for this file only.
+- Glossary links for recurring terms:
+  [locked MMD^2 derivation](docs/technical/glossary.md#locked-mmd2-derivation),
+  [ZZ lattice family](docs/technical/glossary.md#zz-lattice-family),
+  [sparse Erdos-Renyi family](docs/technical/glossary.md#sparse-erdos-renyi-family),
+  [generator matrix](docs/technical/glossary.md#generator-matrix),
+  [generator](docs/technical/glossary.md#generator),
+  [mask](docs/technical/glossary.md#mask),
+  [parity](docs/technical/glossary.md#parity),
+  [spectral weight](docs/technical/glossary.md#spectral-weight),
+  [gradient concentration](docs/technical/glossary.md#gradient-concentration)
 
 ## Ready Now
 
 ### Foundation and Theory
 
 - `[ ] T1` [Week 1] [Confirm the exact Gaussian spectral normalization used by the locked MMD^2 derivation](src/iqp_bp/mmd/kernel.py#L34)
-  Current state: Gaussian weights and sampling are implemented, but the derivation-to-code normalization has not been explicitly locked down.
+  Current state: Gaussian weights and sampling are implemented, but the derivation-to-code normalization has not been explicitly locked down. See [locked MMD^2 derivation](docs/technical/glossary.md#locked-mmd2-derivation) and [spectral weight](docs/technical/glossary.md#spectral-weight).
 
 - `[~] T2` [Week 1] [Keep the Laplacian kernel path as an explicit stub until its MMD^2 decomposition is derived and checked](src/iqp_bp/mmd/kernel.py#L92)
   Current state: there is an approximate Laplacian implementation, but it is not yet a clearly validated or theory-locked final path.
 
 - `[ ] T3` [Week 1] [Replace the generic 2D patch sampler with the exact nearest-neighbour ZZ lattice family in scope](src/iqp_bp/hypergraph/families.py#L93)
-  Current state: a 2D lattice-style generator exists, but it is still a generic patch sampler rather than the exact scope-locked family.
+  Current state: a 2D lattice-style generator exists, but it is still a generic patch sampler rather than the exact scope-locked family. See [ZZ lattice family](docs/technical/glossary.md#zz-lattice-family) and [generator](docs/technical/glossary.md#generator).
 
 ### Reproducibility and Core Pipeline
 
@@ -49,7 +59,7 @@ How to read this file:
 ### Scaling Inputs
 
 - `[~] S1` [Weeks 3-4] [Calibrate the sparse Erdos-Renyi family to the SMART bounded-degree regime](src/iqp_bp/hypergraph/families.py#L58)
-  Current state: an Erdos-Renyi generator exists with configurable `p_edge`, but it is not yet calibrated to the SMART bounded-expected-degree regime.
+  Current state: an Erdos-Renyi generator exists with configurable `p_edge`, but it is not yet calibrated to the SMART bounded-expected-degree regime. See [sparse Erdos-Renyi family](docs/technical/glossary.md#sparse-erdos-renyi-family).
 
 - `[~] S2` [Weeks 3-4] [Implement the Ising-like synthetic target and the structured real or binary-mixture target](src/iqp_bp/experiments/run_scaling.py#L130)
   Current state: dataset config placeholders exist, but only product Bernoulli data is actually implemented.
@@ -175,4 +185,3 @@ How to read this file:
 ### Wave E - Final phase-2 execution tasks
 
 `Q5`, `K2`
-

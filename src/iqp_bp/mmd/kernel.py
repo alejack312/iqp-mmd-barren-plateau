@@ -7,6 +7,12 @@ For each kernel k : {±1}^n × {±1}^n → R, we provide:
 
 All kernels use ±1 encoding convention: x_i ∈ {±1}.
 For binary x ∈ {0,1}^n, convert via x_pm = 1 - 2*x.
+
+Glossary:
+  - spectral weight: docs/technical/glossary.md#spectral-weight
+  - spectral weights decaying: docs/technical/glossary.md#spectral-weights-decay
+  - mode: docs/technical/glossary.md#mode
+  - binary mask: docs/technical/glossary.md#binary-mask
 """
 
 from __future__ import annotations
@@ -33,6 +39,7 @@ def gaussian_spectral_weights(n: int, sigma: float) -> np.ndarray:
     """
     # TODO: Week 1 (D1.1) confirm the exact Gaussian spectral normalization used by
     # the locked MMD^2 derivation and expose it explicitly for theory/implementation parity.
+    # See docs/technical/glossary.md#locked-mmd2-derivation.
     tau = np.tanh(1.0 / sigma**2)
     return tau ** np.arange(n + 1)
 
@@ -47,6 +54,9 @@ def gaussian_sample_a(
 
     First samples Hamming weight w ~ P(w) ∝ C(n,w) * tau^w,
     then samples uniform a of that weight.
+
+    See docs/technical/glossary.md#z-word and
+    docs/technical/glossary.md#spectral-weight.
 
     Returns:
         a_samples: shape (num_a_samples, n), dtype uint8
@@ -106,7 +116,10 @@ def laplacian_sample_a(
 
 
 def _laplacian_spectral_weight(n: int, w: int, sigma: float) -> float:
-    """Approximate spectral weight for Laplacian kernel at Hamming weight w."""
+    """Approximate spectral weight for Laplacian kernel at Hamming weight w.
+
+    See docs/technical/glossary.md#spectral-weight.
+    """
     # Via inclusion-exclusion / Krawtchouk expansion (approximate)
     total = 0.0
     for h in range(n + 1):

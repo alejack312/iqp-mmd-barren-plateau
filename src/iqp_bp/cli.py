@@ -39,6 +39,13 @@ def main() -> None:
         from iqp_bp.experiments.run_scaling import run
     elif args.command == "run-qiskit":
         from iqp_bp.experiments.run_qiskit import run
+    # Add a dedicated grid-preview command.
+    elif args.command == "grid-preview":
+        from iqp_bp.config import preview_config
+        preview_config(cfg)
+    # Add a dedicated validation command.
+    elif args.command == "run-validation":
+        from iqp_bp.experiments.run_validation import run
     else:
         from iqp_bp.experiments.run_forge import run
 

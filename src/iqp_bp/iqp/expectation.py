@@ -9,6 +9,11 @@ where the phase is:
     Φ(θ, z, a) = 2 · Σ_j θ_j · (a · g_j mod 2) · (-1)^{z · g_j}
 
 This is efficiently computable for large n (no 2^n state vector required).
+
+Glossary:
+  - generator matrix: docs/technical/glossary.md#generator-matrix
+  - mask: docs/technical/glossary.md#mask
+  - parity: docs/technical/glossary.md#parity
 """
 
 from __future__ import annotations
@@ -34,6 +39,7 @@ def iqp_phase(
         phases: shape (B,), float64
     """
     # (a · g_j mod 2) for each generator j: shape (m,)
+    # This is a parity overlap test; see docs/technical/glossary.md#parity.
     a_dot_g = (G @ a) % 2  # shape (m,)
 
     # (-1)^{z · g_j} for each (sample, generator): shape (B, m)

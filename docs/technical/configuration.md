@@ -2,6 +2,8 @@
 
 This covers the four things you'll most often need to change: what data the model trains on, what circuit topology it uses, which kernel defines the loss, and where parameters start. Everything is controlled through YAML files — no code changes required for standard experiments.
 
+If a term here is project-specific â€” for example `ZZ lattice family`, `sparse Erdős–Rényi`, or `locked MMD^2 derivation` â€” see [glossary.md](./glossary.md).
+
 ## How configs work
 
 `configs/base.yaml` holds defaults for all experiments. Files in `configs/experiments/` override specific values. When you run an experiment, `load_config()` deep-merges your file over the base:

@@ -3,6 +3,11 @@
 Each function returns a generator matrix G of shape (m, n) with binary
 entries. Row j is the bitmask g_j ∈ {0,1}^n for the j-th IQP generator
 exp(i θ_j X^{g_j}).
+
+Glossary:
+  - generator matrix: docs/technical/glossary.md#generator-matrix
+  - generator / hyperedge: docs/technical/glossary.md#generator
+  - interaction pattern: docs/technical/glossary.md#interaction-pattern
 """
 
 from __future__ import annotations
@@ -56,7 +61,8 @@ def erdos_renyi(
     if rng is None:
         rng = np.random.default_rng()
     # TODO: Weeks 3-4 (D4.1) calibrate this family to the SMART sparse
-    # ErdÅ‘sâ€“RÃ©nyi regime with bounded expected degree and comparable m(n) scaling.
+    # Erdos-Renyi regime with bounded expected degree and comparable m(n) scaling.
+    # See docs/technical/glossary.md#sparse-erdos-renyi-family.
     G = rng.random((m, n)) < p_edge
     # Ensure no all-zero generators
     empty = G.sum(axis=1) == 0
@@ -92,6 +98,7 @@ def lattice(
     elif dimension == 2:
         # TODO: Week 1 (D1.1/D1.3) replace the generic 2D patch sampler with the
         # exact nearest-neighbour ZZ lattice family used in the locked SMART scope.
+        # See docs/technical/glossary.md#zz-lattice-family.
         side = int(np.round(np.sqrt(n)))
         for j in range(m):
             i0, j0 = rng.integers(0, side), rng.integers(0, side)
