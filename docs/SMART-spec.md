@@ -23,6 +23,7 @@ From Feb 22 to May 15, we will:
    * Hypothesis-driven circuit generator (hypergraph families).  
    * Classical IQP expectation engine (for ⟨Zₐ⟩ and MMD² mixture) .  
    * Gradient/variance estimator (per-parameter and aggregate).  
+   * Full classical training loop for the MMD objective, with quantum execution reserved for sampling from the learned IQP model at inference time.  
 3. Execute scaling experiments across 4 circuit families × 3 kernel types × ≥ 3 initialization schemes (including small-angle), with primary focus on Gaussian kernel × all 4 connectivity families before extending to other kernels.
 4. Validate selected regimes in Qiskit:  
    * Statevector baseline  
@@ -67,6 +68,8 @@ Use the definition and structure consistent with :
 
 * Gates: ( \\exp(i \\theta\_j X^{g\_j}) ) with generator bitmask ( g\_j \\in {0,1}^n )  
 * Measurement in computational basis.
+
+Operational umbrella: use IQP circuits as generative models trained against data with the MMD loss entirely on classical hardware, then sample from the trained circuit on quantum hardware so that inference remains aligned with the IQP sampling-hardness motivation.
 
 ### **Loss**
 
@@ -413,4 +416,3 @@ If you want, I can also produce:
 2. Larocca, M., Thanasilp, S., Wang, S., Sharma, K., Biamonte, J., Coles, P. J., Cincio, L., McClean, J. R., Holmes, Z., & Cerezo, M. (2024). *Barren Plateaus in Variational Quantum Computing*. Nature Reviews Physics 7, 174–189. arXiv:2405.00781. — Review framing BPs as average-case, curse-of-dimensionality statements that do not preclude trainable valleys.
 
 3. Mhiri, H., Puig, R., Lerch, S., Rudolph, M. S., Chotibut, T., Thanasilp, S., & Holmes, Z. (2025). *A unifying account of warm start guarantees for patches of quantum landscapes*. arXiv:2502.07889. — Shows absence of BPs for perturbations around favourable starting points; motivates small-angle initialization study.
-

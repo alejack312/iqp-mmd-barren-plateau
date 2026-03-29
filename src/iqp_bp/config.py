@@ -24,6 +24,8 @@ def load_config(path: str | Path, base_path: str | Path = _BASE_CONFIG_PATH) -> 
     Returns:
         Merged config dict.
     """
+    # TODO: Week 1 (D1.2) validate the merged config against the schema and persist
+    # the fully resolved experiment grid for reproducible reruns and scope-lock review.
     base = _load_yaml(base_path)
     override = _load_yaml(path)
     return _deep_merge(base, override)

@@ -66,6 +66,8 @@ def iqp_expectation(
     """
     if rng is None:
         rng = np.random.default_rng()
+    # TODO: Week 1 (D1.3) add stable batching / streaming over z samples so the
+    # expectation engine can scale without memory blowups while still reporting CI data.
     n = G.shape[1]
     z = rng.integers(0, 2, size=(num_z_samples, n), dtype=np.uint8)
     phases = iqp_phase(theta, G, z, a)
@@ -92,6 +94,8 @@ def iqp_expectation_exact(
     Returns:
         exact expectation value
     """
+    # TODO: Week 2 (D2.1/D2.3) wire this exact path into automated MC-vs-exact
+    # regression plots for n <= 12, including estimator error and runtime curves.
     n = G.shape[1]
     if n > 20:
         raise ValueError(f"Exact computation infeasible for n={n} > 20")

@@ -22,5 +22,7 @@ def make_jax_key(seed: int):
 
 def split_seeds(base_seed: int, n: int) -> list[int]:
     """Derive n independent seeds from a base seed."""
+    # TODO: Week 1 (D1.2) reserve named seed streams for circuit, data, theta,
+    # kernel, and Qiskit noise sampling so cross-checks are exactly reproducible.
     rng = np.random.default_rng(base_seed)
     return rng.integers(0, 2**31 - 1, size=n).tolist()

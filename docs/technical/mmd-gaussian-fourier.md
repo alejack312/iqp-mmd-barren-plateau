@@ -51,22 +51,30 @@ Everything below is the same argument written in proper math.
 Start with n-bit strings x ∈ {0,1}^n. For any subset S ⊆ {1,...,n} (encoded as a bitmask
 a ∈ {0,1}^n), define the **parity function**:
 
-$$\chi_S(x) = (-1)^{a \cdot x} = (-1)^{\sum_{i \in S} x_i}$$
+$$
+\chi_S(x) = (-1)^{a \cdot x} = (-1)^{\sum_{i \in S} x_i}
+$$
 
 These are the Walsh characters — the Fourier basis functions for {0,1}^n. They take values ±1
 and are orthonormal under the uniform measure:
 
-$$\frac{1}{2^n} \sum_{x \in \{0,1\}^n} \chi_S(x)\, \chi_T(x) = \delta_{S,T}$$
+$$
+\frac{1}{2^n} \sum_{x \in \{0,1\}^n} \chi_S(x)\, \chi_T(x) = \delta_{S,T}
+$$
 
 The quantum connection is immediate: the Pauli Z-string operator $Z_S = \bigotimes_{i \in S} Z_i$
-has eigenvalue $\chi_S(x)$ on any computational basis state $|x\rangle$:
+has eigenvalue $\chi_S(x)$ on any computational basis state $\lvert x\rangle$:
 
-$$\langle x | Z_S | x \rangle = (-1)^{a \cdot x} = \chi_S(x)$$
+$$
+\langle x | Z_S | x \rangle = (-1)^{a \cdot x} = \chi_S(x)
+$$
 
 So for any distribution p over bitstrings, the **Fourier coefficient at mode S** and the
 **expectation value of Z_S** are the same thing:
 
-$$\hat{p}(S) = \mathbb{E}_{x \sim p}[\chi_S(x)] = \mathbb{E}_{x \sim p}[\langle x | Z_S | x \rangle] = \langle Z_S \rangle_p$$
+$$
+\hat{p}(S) = \mathbb{E}_{x \sim p}[\chi_S(x)] = \mathbb{E}_{x \sim p}[\langle x | Z_S | x \rangle] = \langle Z_S \rangle_p
+$$
 
 This is the bridge. Any question about the Fourier structure of the distribution p is
 equivalently a question about which Pauli Z observables have non-zero expectation under p, and
@@ -74,7 +82,9 @@ vice versa.
 
 Every distribution p has a unique Boolean Fourier expansion:
 
-$$p(x) = \sum_{S \subseteq [n]} \hat{p}(S)\, \chi_S(x) = \sum_{a \in \{0,1\}^n} \langle Z_a \rangle_p\, (-1)^{a \cdot x}$$
+$$
+p(x) = \sum_{S \subseteq [n]} \hat{p}(S)\, \chi_S(x) = \sum_{a \in \{0,1\}^n} \langle Z_a \rangle_p\, (-1)^{a \cdot x}
+$$
 
 The coefficients $\langle Z_a \rangle_p$ completely characterize p. Matching all of them between two
 distributions is equivalent to matching the distributions exactly.
@@ -85,21 +95,29 @@ distributions is equivalent to matching the distributions exactly.
 
 The Gaussian kernel on binary strings (as used in this codebase) is:
 
-$$k_\sigma(x, y) = \exp\!\left(-\frac{H(x, y)}{\sigma^2}\right)$$
+$$
+k_\sigma(x, y) = \exp\!\left(-\frac{H(x, y)}{\sigma^2}\right)
+$$
 
 where $H(x,y) = \#\{i : x_i \neq y_i\}$ is the Hamming distance. The key is to factor this over
 the individual bits. Each bit contributes a factor:
 
-$$k^{(i)}_\sigma(x_i, y_i) = \exp\!\left(-\frac{|x_i - y_i|}{\sigma^2}\right) = \begin{cases} 1 & x_i = y_i \\ e^{-1/\sigma^2} & x_i \neq y_i \end{cases}$$
+$$
+k^{(i)}_\sigma(x_i, y_i) = \exp\!\left(-\frac{\lvert x_i - y_i\rvert}{\sigma^2}\right) = \begin{cases} 1 & x_i = y_i \\ e^{-1/\sigma^2} & x_i \neq y_i \end{cases}
+$$
 
 Switch to ±1 encoding via $s_i = 1 - 2x_i$, $t_i = 1 - 2y_i$. Then $s_i t_i = +1$ when $x_i = y_i$
 and $-1$ when $x_i \neq y_i$, so:
 
-$$k^{(i)}_\sigma = \frac{1 + e^{-1/\sigma^2}}{2} + s_i t_i \cdot \frac{1 - e^{-1/\sigma^2}}{2}$$
+$$
+k^{(i)}_\sigma = \frac{1 + e^{-1/\sigma^2}}{2} + s_i t_i \cdot \frac{1 - e^{-1/\sigma^2}}{2}
+$$
 
 Write this as $A_\sigma(1 + \tau\, s_i t_i)$ where:
 
-$$A_\sigma = \frac{1 + e^{-1/\sigma^2}}{2}, \qquad \tau = \frac{1 - e^{-1/\sigma^2}}{1 + e^{-1/\sigma^2}} = \tanh\!\left(\frac{1}{2\sigma^2}\right)$$
+$$
+A_\sigma = \frac{1 + e^{-1/\sigma^2}}{2}, \qquad \tau = \frac{1 - e^{-1/\sigma^2}}{1 + e^{-1/\sigma^2}} = \tanh\!\left(\frac{1}{2\sigma^2}\right)
+$$
 
 So $\tau \in (0, 1)$ is the key parameter — it controls how fast the Fourier weights decay with
 mode order. (The code uses the closely related $\tau' = \tanh(1/\sigma^2)$, which differs by
@@ -107,21 +125,27 @@ a reparametrization of $\sigma$ but has the same structural role.)
 
 Multiplying over all n bits:
 
-$$k_\sigma(x, y) = \prod_{i=1}^n A_\sigma(1 + \tau\, s_i t_i) = A_\sigma^n \prod_{i=1}^n (1 + \tau\, s_i t_i)$$
+$$
+k_\sigma(x, y) = \prod_{i=1}^n A_\sigma(1 + \tau\, s_i t_i) = A_\sigma^n \prod_{i=1}^n (1 + \tau\, s_i t_i)
+$$
 
 Expand the product:
 
-$$\prod_{i=1}^n (1 + \tau\, s_i t_i) = \sum_{S \subseteq [n]} \tau^{|S|} \prod_{i \in S} s_i t_i = \sum_{S \subseteq [n]} \tau^{|S|}\, \chi_S(x)\, \chi_S(y)$$
+$$
+\prod_{i=1}^n (1 + \tau\, s_i t_i) = \sum_{S \subseteq [n]} \tau^{\lvert S\rvert} \prod_{i \in S} s_i t_i = \sum_{S \subseteq [n]} \tau^{\lvert S\rvert}\, \chi_S(x)\, \chi_S(y)
+$$
 
 where the last step uses $\prod_{i \in S} s_i \cdot \prod_{i \in S} t_i = \chi_S(x)\chi_S(y)$.
 
 The full **Fourier-basis expansion of the Gaussian kernel** is:
 
-$$\boxed{k_\sigma(x, y) = C \sum_{S \subseteq [n]} \tau^{|S|}\, \chi_S(x)\, \chi_S(y)}$$
+$$
+\boxed{k_\sigma(x, y) = C \sum_{S \subseteq [n]} \tau^{\lvert S\rvert}\, \chi_S(x)\, \chi_S(y)}
+$$
 
 where $C = A_\sigma^n$ is a normalization constant. The kernel is diagonal in the Walsh basis —
 it only couples mode S on the x-side to the same mode S on the y-side, never mixing different
-modes. The weight on each mode depends only on the Hamming weight $|S|$, not on which specific
+modes. The weight on each mode depends only on the Hamming weight $\lvert S\rvert$, not on which specific
 qubits are in S. Since $\tau < 1$, higher-order modes are exponentially down-weighted. How fast
 they decay depends on $\sigma$: a larger bandwidth gives a smaller $\tau$ and a steeper spectral
 dropoff, so the kernel tests fewer Fourier modes.
@@ -132,17 +156,25 @@ dropoff, so the kernel tests fewer Fourier modes.
 
 Plug the kernel expansion into the MMD²:
 
-$$\text{MMD}^2_\sigma(p, q) = \mathbb{E}_{x,x' \sim p}[k(x,x')] - 2\,\mathbb{E}_{x \sim p,\, y \sim q}[k(x,y)] + \mathbb{E}_{y,y' \sim q}[k(y,y')]$$
+$$
+\text{MMD}^2_\sigma(p, q) = \mathbb{E}_{x,x' \sim p}[k(x,x')] - 2\,\mathbb{E}_{x \sim p,\, y \sim q}[k(x,y)] + \mathbb{E}_{y,y' \sim q}[k(y,y')]
+$$
 
 By linearity, each of the three terms factors over the Walsh basis:
 
-$$\mathbb{E}_{x,x' \sim p}[k(x,x')] = C \sum_S \tau^{|S|} \langle Z_S \rangle_p^2$$
+$$
+\mathbb{E}_{x,x' \sim p}[k(x,x')] = C \sum_S \tau^{\lvert S\rvert} \langle Z_S \rangle_p^2
+$$
 
-$$\mathbb{E}_{x \sim p,\, y \sim q}[k(x,y)] = C \sum_S \tau^{|S|} \langle Z_S \rangle_p \langle Z_S \rangle_q$$
+$$
+\mathbb{E}_{x \sim p,\, y \sim q}[k(x,y)] = C \sum_S \tau^{\lvert S\rvert} \langle Z_S \rangle_p \langle Z_S \rangle_q
+$$
 
 Assembling them:
 
-$$\boxed{\text{MMD}^2_\sigma(p, q) = C \sum_{S \subseteq [n]} \tau^{|S|} \left(\langle Z_S \rangle_p - \langle Z_S \rangle_q\right)^2}$$
+$$
+\boxed{\text{MMD}^2_\sigma(p, q) = C \sum_{S \subseteq [n]} \tau^{\lvert S\rvert} \left(\langle Z_S \rangle_p - \langle Z_S \rangle_q\right)^2}
+$$
 
 This is the central formula. **The Gaussian-kernel MMD² is a weighted $\ell^2$ distance between the
 Fourier spectra of p and q.** It measures how much the two distributions disagree on each
@@ -159,11 +191,15 @@ $\langle Z_S \rangle_p$ and $\langle Z_S \rangle_q$ — which can both be estima
 The sum over $2^n$ modes is intractable directly. But its structure suggests a natural Monte
 Carlo strategy. Define the probability distribution:
 
-$$P_\sigma(S) \propto \binom{n}{|S|} \tau^{|S|}$$
+$$
+P_\sigma(S) \propto \binom{n}{\lvert S\rvert} \tau^{\lvert S\rvert}
+$$
 
 which is the normalized version of the weights. Then:
 
-$$\text{MMD}^2_\sigma(p, q) \propto \mathbb{E}_{S \sim P_\sigma}\!\left[\frac{\left(\langle Z_S \rangle_p - \langle Z_S \rangle_q\right)^2}{\text{(combinatorial factor)}}\right]$$
+$$
+\text{MMD}^2_\sigma(p, q) \propto \mathbb{E}_{S \sim P_\sigma}\!\left[\frac{\left(\langle Z_S \rangle_p - \langle Z_S \rangle_q\right)^2}{\text{(combinatorial factor)}}\right]
+$$
 
 To sample $S \sim P_\sigma$ efficiently:
 
@@ -187,11 +223,15 @@ For IQP circuits, the Fourier coefficient $\langle Z_S \rangle_{q_\theta}$ has a
 form. This is what makes the whole framework feasible. The formula (derived in the companion doc
 [iqp-classical-sampling.md](./iqp-classical-sampling.md)) is:
 
-$$\langle Z_S \rangle_{q_\theta} = \mathbb{E}_{z \sim \text{Uniform}(\{0,1\}^n)}\!\left[\cos\!\left(\Phi(\theta, z, S)\right)\right]$$
+$$
+\langle Z_S \rangle_{q_\theta} = \mathbb{E}_{z \sim \text{Uniform}(\{0,1\}^n)}\!\left[\cos\!\left(\Phi(\theta, z, S)\right)\right]
+$$
 
 where the phase is:
 
-$$\Phi(\theta, z, S) = 2 \sum_{j=1}^m \theta_j \cdot (S \cdot g_j \bmod 2) \cdot (-1)^{z \cdot g_j}$$
+$$
+\Phi(\theta, z, S) = 2 \sum_{j=1}^m \theta_j \cdot (S \cdot g_j \bmod 2) \cdot (-1)^{z \cdot g_j}
+$$
 
 The inner quantity $(S \cdot g_j \bmod 2)$ determines whether mode S "sees" generator $g_j$: it is
 1 iff S has odd overlap with the support of generator $j$, and 0 otherwise. Generators with even
@@ -200,7 +240,9 @@ overlap with S drop out of the phase entirely.
 In matrix form: if $G$ is the $m \times n$ generator matrix (rows are the generators), then the
 indicator vector $(S \cdot g_j \bmod 2)_{j=1}^m$ is just $G \cdot S \bmod 2$. So the phase is:
 
-$$\Phi(\theta, z, S) = 2\, (G S \bmod 2)^T \cdot \big[(-1)^{Gz \bmod 2} \odot \theta\big]$$
+$$
+\Phi(\theta, z, S) = 2\, (G S \bmod 2)^T \cdot \big[(-1)^{Gz \bmod 2} \odot \theta\big]
+$$
 
 Everything here is classical binary arithmetic and dot products.
 
@@ -213,14 +255,16 @@ of $\theta$ — when $\Phi(\theta, z, S) = 0$ for all $\theta$ and $z$. This hap
 $(S \cdot g_j \bmod 2) = 0$ for **every** generator $j$, i.e., S lies in the null space of
 $G^T$ over $\mathbb{F}_2$:
 
-$$\text{Inert modes} = \{S \in \{0,1\}^n : G S \equiv 0 \pmod{2}\}$$
+$$
+\text{Inert modes} = \{S \in \{0,1\}^n : G S \equiv 0 \pmod{2}\}
+$$
 
 The structure of inert modes depends directly on the circuit connectivity:
 
 **Product state** ($G = I_n$, single-qubit Z gates):
 $G S = S$ mod 2, so $S$ is inert only when $S = 0$. Every non-trivial Z-string has odd overlap
 with at least one generator. The circuit can tune *all* Fourier modes — but it has only n
-parameters (one per qubit), so modes with $|S| > 1$ are tunable only through correlated
+parameters (one per qubit), so modes with $\lvert S\rvert > 1$ are tunable only through correlated
 combinations of single-qubit phases.
 
 **2D lattice** (ZZ pairs on nearest neighbors, $g_{ij} = e_i + e_j$):
@@ -229,8 +273,8 @@ in S. Modes where S has even degree in the interaction graph (every qubit in S h
 of neighbors also in S) are inert.
 
 **Complete graph** (all $\binom{n}{2}$ ZZ pairs):
-Any S with $|S| \geq 2$ has many generators with odd overlap, giving many parameters controlling
-the mode. Single-qubit modes $|S|=1$ need a single-qubit Z gate if one is included, otherwise
+Any S with $\lvert S\rvert \geq 2$ has many generators with odd overlap, giving many parameters controlling
+the mode. Single-qubit modes $\lvert S\rvert=1$ need a single-qubit Z gate if one is included, otherwise
 they may also be inert.
 
 **Erdős–Rényi or bounded-degree** (random sparse hyperedges):
@@ -258,7 +302,7 @@ Per [Rudolph et al. 2023, arXiv:2305.02881], this regime can produce untrainable
 for generic circuit families because the effective observable is global.
 
 **Large $\sigma$ (broad kernel, $\tau \approx 1/(2\sigma^2) \ll 1$):**
-Only low-order modes ($|S| = 1, 2, \ldots$) contribute appreciably. The loss is
+Only low-order modes ($\lvert S\rvert = 1, 2, \ldots$) contribute appreciably. The loss is
 **low-bodied**: it measures discrepancy in marginals and low-order correlations. Gradient
 variance scales better because the effective observable is local. The same paper shows that
 for $\sigma \in \Theta(\sqrt{n})$ (so $\tau \sim 1/n$), the MMD is trainable for
@@ -278,17 +322,21 @@ entirely different reasons (probability estimation from samples).
 
 Differentiating $\text{MMD}^2_\sigma(p, q_\theta)$ with respect to parameter $\theta_i$:
 
-$$\partial_{\theta_i} \text{MMD}^2 = -2C \sum_S \tau^{|S|} \left(\langle Z_S \rangle_p - \langle Z_S \rangle_{q_\theta}\right) \partial_{\theta_i} \langle Z_S \rangle_{q_\theta}$$
+$$
+\partial_{\theta_i} \text{MMD}^2 = -2C \sum_S \tau^{\lvert S\rvert} \left(\langle Z_S \rangle_p - \langle Z_S \rangle_{q_\theta}\right) \partial_{\theta_i} \langle Z_S \rangle_{q_\theta}
+$$
 
 And the per-mode gradient is (from `mmd/gradients.py`):
 
-$$\partial_{\theta_i} \langle Z_S \rangle_{q_\theta} = -2\, (S \cdot g_i \bmod 2)\, \mathbb{E}_{z \sim U}\!\left[\sin(\Phi(\theta, z, S)) \cdot (-1)^{z \cdot g_i}\right]$$
+$$
+\partial_{\theta_i} \langle Z_S \rangle_{q_\theta} = -2\, (S \cdot g_i \bmod 2)\, \mathbb{E}_{z \sim U}\!\left[\sin(\Phi(\theta, z, S)) \cdot (-1)^{z \cdot g_i}\right]
+$$
 
 If generator $i$ has even overlap with S, its gradient is zero — it cannot affect mode S. The
 total gradient variance $\text{Var}_\theta[\partial_{\theta_i} \mathcal{L}]$ therefore depends on
 three things: how many modes have odd overlap with $g_i$ (fixed by the hypergraph), what
-$\tau^{|S|}$ is for those modes (fixed by the bandwidth), and how large
-$|\langle Z_S \rangle_p - \langle Z_S \rangle_{q_\theta}|$ is for them (depends on initialization
+$\tau^{\lvert S\rvert}$ is for those modes (fixed by the bandwidth), and how large
+$\lvert\langle Z_S \rangle_p - \langle Z_S \rangle_{q_\theta}\rvert$ is for them (depends on initialization
 and target data).
 
 The barren plateau question for this project — whether gradient variance decays exponentially in
@@ -301,19 +349,25 @@ collapse to a measure-zero set, or remain accessible?
 
 | Concept | In terms of Z-strings / Fourier | In terms of circuits |
 |---|---|---|
-| Gaussian kernel | Diagonal in Walsh basis with weights $\tau^{\|S\|}$ | — |
+| Gaussian kernel | Diagonal in Walsh basis with weights $\tau^{\lvert S\rvert}$ | — |
 | MMD²(p, q) | Weighted $\ell^2$ distance between Fourier spectra | Measurable from samples |
-| Mode weight | $\tau^{\|S\|}$, depends only on $\|S\|$ | Controlled by bandwidth $\sigma$ |
+| Mode weight | $\tau^{\lvert S\rvert}$, depends only on $\lvert S\rvert$ | Controlled by bandwidth $\sigma$ |
 | Mode access | Z-words with odd overlap with some $g_j$ | Determined by hypergraph $G$ |
 | Trainability | Gradient variance over active, low-weight modes | Depends on $G$ + $\sigma$ interaction |
 
 The full derivation in one chain:
 
-$$k_\sigma(x,y) = C\sum_S \tau^{|S|}\chi_S(x)\chi_S(y)$$
+$$
+k_\sigma(x,y) = C\sum_S \tau^{\lvert S\rvert}\chi_S(x)\chi_S(y)
+$$
 
-$$\Rightarrow\quad \text{MMD}^2_\sigma(p,q) = C\sum_S \tau^{|S|}\!\left(\langle Z_S \rangle_p - \langle Z_S \rangle_q\right)^2$$
+$$
+\Rightarrow\quad \text{MMD}^2_\sigma(p,q) = C\sum_S \tau^{\lvert S\rvert}\!\left(\langle Z_S \rangle_p - \langle Z_S \rangle_q\right)^2
+$$
 
-$$\Rightarrow\quad \langle Z_S \rangle_{q_\theta} = \mathbb{E}_z\!\left[\cos\!\left(\Phi(\theta,z,S)\right)\right]$$
+$$
+\Rightarrow\quad \langle Z_S \rangle_{q_\theta} = \mathbb{E}_z\!\left[\cos\!\left(\Phi(\theta,z,S)\right)\right]
+$$
 
 The Gaussian kernel's product structure over bits is what collapses the $2^n$-dimensional MMD
 expression into a sum over Z-word expectation values. IQP circuits are special because those

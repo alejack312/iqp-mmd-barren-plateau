@@ -38,6 +38,8 @@ class IQPModel:
         """Construct from a named circuit family."""
         if m is None:
             m = n
+        # TODO: Week 1 (D1.3) preserve family / generation metadata on the model so
+        # experiment records and Qiskit exports can recover the exact circuit provenance.
         G = make_hypergraph(family=family, n=n, m=m, rng=rng, **family_kwargs)
         return cls(G)
 

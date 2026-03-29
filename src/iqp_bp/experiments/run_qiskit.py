@@ -41,6 +41,8 @@ def run(cfg: dict[str, Any]) -> None:
     qiskit_cfg = cfg.get("qiskit", {})
     max_n = qiskit_cfg.get("max_n", 20)
 
+    # TODO: Week 5 (D6.2/D6.3) implement the actual classical/statevector/shots/noise
+    # cross-check and record gradient-SNR plus shots-needed curves per regime.
     with open(out_path, "w") as fout:
         for family in families:
             for n in n_qubits_list:
@@ -48,7 +50,8 @@ def run(cfg: dict[str, Any]) -> None:
                     log.warning(f"Skipping n={n} > max_n={max_n}")
                     continue
 
-                # TODO: build circuit and compare estimators
+                # TODO: Week 5 (D6.2) build the circuit, compare classical vs
+                # statevector vs shot-based estimators, and store the raw cross-check data.
                 record = {
                     "family": family,
                     "n": n,

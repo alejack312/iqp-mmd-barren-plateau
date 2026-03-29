@@ -31,6 +31,8 @@ def gaussian_spectral_weights(n: int, sigma: float) -> np.ndarray:
         weights: shape (n+1,) where weights[w] is the weight for all a with |a|=w.
         (Weights are equal for all a with the same Hamming weight.)
     """
+    # TODO: Week 1 (D1.1) confirm the exact Gaussian spectral normalization used by
+    # the locked MMD^2 derivation and expose it explicitly for theory/implementation parity.
     tau = np.tanh(1.0 / sigma**2)
     return tau ** np.arange(n + 1)
 
@@ -87,6 +89,8 @@ def laplacian_sample_a(
     """Sample Z-word bitmasks a ~ P_L(a; σ) via Walsh–Hadamard transform."""
     if rng is None:
         rng = np.random.default_rng()
+    # TODO: Week 1 (D1.1) keep this as an explicit stub until the Laplacian MMD^2
+    # decomposition is derived and checked against brute force on small n.
     weights = np.array([
         _laplacian_spectral_weight(n, w, sigma) * np.exp(_log_binom(n, w))
         for w in range(n + 1)
@@ -195,6 +199,8 @@ def multi_scale_gaussian_sample_a(
     """
     if rng is None:
         rng = np.random.default_rng()
+    # TODO: Week 6 (D8.1) validate this phase-2 kernel against the exact mixture
+    # formula and make the component sweep part of the experiment grid, not a fixed default.
     w = np.array(weights if weights is not None else [1.0 / len(sigmas)] * len(sigmas), dtype=float)
     w = w / w.sum()
 

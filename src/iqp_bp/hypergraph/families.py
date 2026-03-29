@@ -55,6 +55,8 @@ def erdos_renyi(
     """
     if rng is None:
         rng = np.random.default_rng()
+    # TODO: Weeks 3-4 (D4.1) calibrate this family to the SMART sparse
+    # ErdÅ‘sâ€“RÃ©nyi regime with bounded expected degree and comparable m(n) scaling.
     G = rng.random((m, n)) < p_edge
     # Ensure no all-zero generators
     empty = G.sum(axis=1) == 0
@@ -88,6 +90,8 @@ def lattice(
             for d in range(range_ + 1):
                 G[j, (start + d) % n] = 1
     elif dimension == 2:
+        # TODO: Week 1 (D1.1/D1.3) replace the generic 2D patch sampler with the
+        # exact nearest-neighbour ZZ lattice family used in the locked SMART scope.
         side = int(np.round(np.sqrt(n)))
         for j in range(m):
             i0, j0 = rng.integers(0, side), rng.integers(0, side)
@@ -233,4 +237,6 @@ def make_hypergraph(
     """Dispatch to family generator by name."""
     if family not in FAMILIES:
         raise ValueError(f"Unknown family {family!r}. Choose from {list(FAMILIES)}")
+    # TODO: Weeks 3-4 (D4.1) enforce the primary four-family sweep and comparable
+    # parameter-count policies centrally instead of distributing that logic in runners.
     return FAMILIES[family](n=n, m=m, rng=rng, **kwargs)

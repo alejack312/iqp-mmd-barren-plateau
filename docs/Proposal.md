@@ -6,6 +6,8 @@ Variational quantum algorithms (VQAs) are widely regarded as one of the most pro
 
 Recent work on IQP-based quantum generative models demonstrates a surprising development: parameterized IQP circuits trained with Maximum Mean Discrepancy (MMD) loss can be optimized efficiently on classical hardware, even for systems with up to one thousand qubits [Rudolph et al., 2023]. At the same time, complexity-theoretic results suggest that sampling from IQP circuits is classically hard under plausible assumptions. Critically, the MMD loss has been shown to have favorable trainability properties compared to explicit losses such as KL divergence, which can introduce a new flavour of barren plateaus [Rudolph et al., 2023].
 
+The umbrella of this project is therefore an IQP generative-modeling pipeline in which training is performed entirely classically using the MMD loss, while inference is delegated to a quantum device that samples from the learned IQP distribution. The practical question is whether this classical-training / quantum-inference split can retain the sampling-hardness motivation of IQP models while avoiding the optimization pathologies usually associated with variational training.
+
 A further dimension of the problem concerns the choice of loss function itself: different kernel families (Gaussian, Laplacian, multi-scale Gaussian) induce different MMD² landscapes, and it is unclear whether barren plateaus are a property of IQP circuits alone or of the kernel-circuit interaction. Recent barren plateau theory [Larocca et al., 2024] frames the phenomenon as an average-case statement over the landscape, leaving open the existence of trainable valleys—an insight further sharpened by warm-start results [Mhiri et al., 2025] showing that perturbations around favourable starting points can avoid exponential gradient suppression.
 
 This creates a central tension:
@@ -134,7 +136,7 @@ For each connectivity family, we sweep over kernel types in order of priority:
 
 The Gaussian kernel is studied exhaustively across all four circuit families first; the remaining kernels are added once the Gaussian regime is fully characterised.
 
-And three initialization schemes: uniform U[-π,π], small-angle N(0,σ_θ²), data-dependent.
+And three initialization schemes: uniform U[-π,π], small-angle N(0,σ_θ²), data-dependent. Small-angle initialization is an explicit experimental axis rather than a minor implementation detail, because one of the project questions is whether it suppresses or avoids barren plateaus relative to uniform initialization.
 
 For each (connectivity, kernel, initialization) configuration:
 
@@ -301,4 +303,3 @@ It situates the study directly at the intersection of:
 2. Larocca, M., Thanasilp, S., Wang, S., Sharma, K., Biamonte, J., Coles, P. J., Cincio, L., McClean, J. R., Holmes, Z., & Cerezo, M. (2024). *Barren Plateaus in Variational Quantum Computing*. Nature Reviews Physics 7, 174–189. arXiv:2405.00781.
 
 3. Mhiri, H., Puig, R., Lerch, S., Rudolph, M. S., Chotibut, T., Thanasilp, S., & Holmes, Z. (2025). *A unifying account of warm start guarantees for patches of quantum landscapes*. arXiv:2502.07889.
-

@@ -24,6 +24,8 @@ def hypergraph_matrix(
     Returns:
         (G, n, m) where G is uint8 ndarray with no all-zero rows.
     """
+    # TODO: Week 2 (D2.1) add strategies that sample the four SMART families
+    # directly so validation covers the real experiment regimes, not just arbitrary G.
     n = draw(st.integers(min_value=n_min, max_value=n_max))
     m = draw(st.integers(min_value=m_min, max_value=m_max))
     G = draw(
@@ -64,6 +66,8 @@ def iqp_parameters(
     std: float = 0.1,
 ) -> np.ndarray:
     """Draw IQP parameter vector θ under given initialization scheme."""
+    # TODO: Week 2 (D2.1) add coverage for the data-dependent initializer and the
+    # full small-angle sweep {0.01, 0.1, 0.3} required by the SMART spec.
     if scheme == "uniform":
         return draw(
             arrays(

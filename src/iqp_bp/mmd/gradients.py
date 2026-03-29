@@ -42,6 +42,8 @@ def grad_expectation_analytic(
     """
     if rng is None:
         rng = np.random.default_rng()
+    # TODO: Week 2 (D2.1) implement the JAX autodiff estimator promised in the
+    # SMART spec and compare it against this analytic path on small-n problems.
     n = G.shape[1]
     g_i = G[param_idx]
 
@@ -159,6 +161,8 @@ def estimate_gradient_variance(
     """
     if rng is None:
         rng = np.random.default_rng()
+    # TODO: Weeks 3-4 (D4.2/D4.3) extend this summary to include aggregate gradient-norm
+    # proxies, heavy-tail checks, and median-of-means statistics for plateau diagnosis.
     grads = [
         grad_mmd2_analytic(
             theta=th, G=G, data=data, param_idx=param_idx,

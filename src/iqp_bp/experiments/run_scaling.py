@@ -36,6 +36,8 @@ def run(cfg: dict[str, Any]) -> None:
     base_seed = cfg["experiment"]["seed"]
 
     # Placeholder data: product Bernoulli (⟨Z_a⟩_p = 0 for |a|≥1)
+    # TODO: Weeks 3-4 (D4.1) expand this runner to sweep the full Cartesian grid:
+    # bandwidth list, small-angle std list, ER p list, and all SMART dataset targets.
     dataset_cfg = cfg["dataset"]
 
     total = len(families) * len(kernels) * len(inits) * len(n_qubits_list)
@@ -81,6 +83,8 @@ def run(cfg: dict[str, Any]) -> None:
                             }
                             fout.write(json.dumps(record) + "\n")
 
+                        # TODO: Weeks 3-4 (D4.2/D4.3) fit polynomial vs exponential
+                        # scaling here and emit the summary artifacts used in the interim memo.
                         done += 1
                         log.info(f"[{done}/{total}] family={family} kernel={kernel} init={init_scheme} n={n}")
 
@@ -123,6 +127,8 @@ def _make_data(dataset_cfg, n, seed):
     rng = np.random.default_rng(seed + 999)
     if dtype == "product_bernoulli":
         return rng.integers(0, 2, size=(N, n), dtype=np.uint8)
+    # TODO: Weeks 3-4 (D4.1) implement the Ising-like synthetic target and the
+    # structured real/binary-mixture target from the SMART dataset plan.
     raise NotImplementedError(f"Dataset type {dtype!r} not yet implemented")
 
 
@@ -137,6 +143,8 @@ def _make_theta(scheme, m, init_cfg, seed):
         s = std[0] if isinstance(std, list) else std
         return rng.normal(0, s, size=m)
     elif scheme == "data_dependent":
+        # TODO: Weeks 3-4 (D4.1) replace this stub with the covariance-informed
+        # data-dependent initializer required by the SMART comparison study.
         return rng.normal(0, 0.01, size=m)  # stub
     raise ValueError(f"Unknown init scheme {scheme!r}")
 
@@ -148,6 +156,11 @@ def _get_kernel_params(kernel, n, kernel_cfg):
         return {"sigma": sigma}
     elif kernel == "laplacian":
         return {"sigma": sigma}
+    elif kernel == "multi_scale_gaussian":
+        # TODO: Week 6 (D8.1) promote the multi-scale Gaussian config into the
+        # phase-2 sweep once the Gaussian baseline is fully characterized.
+        msg = kernel_cfg.get("multi_scale_gaussian", {})
+        return {"sigmas": msg.get("sigmas", [sigma]), "weights": msg.get("weights")}
     elif kernel == "polynomial":
         poly = kernel_cfg.get("polynomial", {})
         return {"degree": poly.get("degree", 2), "constant": poly.get("constant", 1.0)}

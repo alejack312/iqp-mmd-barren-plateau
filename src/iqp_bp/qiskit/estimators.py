@@ -94,6 +94,8 @@ def parameter_shift_gradient(
 
     ∂_{θ_i} ⟨Z_a⟩ = (1/2) [⟨Z_a⟩(θ + π/2 e_i) - ⟨Z_a⟩(θ - π/2 e_i)]
     """
+    # TODO: Week 5 (D6.2/D6.3) lift these observable-level primitives to full
+    # MMD^2 and gradient-SNR comparisons across exact, statevector, shots, and noise.
     estimate_fn = shot_based_expectation if use_shots else statevector_expectation
     kwargs = {"n_shots": n_shots} if use_shots else {}
 

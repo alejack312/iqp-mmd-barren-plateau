@@ -43,6 +43,8 @@ def mmd2(
     """
     if rng is None:
         rng = np.random.default_rng()
+    # TODO: Week 1 (D1.3) expose per-a contributions and confidence diagnostics so
+    # the minimal working pipeline can inspect one full MMD^2 estimate end-to-end.
     n = G.shape[1]
 
     # Sample Z-words a ~ P_k
@@ -57,4 +59,6 @@ def mmd2(
         for a in a_samples
     ])
 
+    # TODO: Week 2 (D2.1) add an exact small-n MMD^2 path here so each supported
+    # kernel can be checked against brute force for n <= 10.
     return float(np.mean((exp_p - exp_q) ** 2))

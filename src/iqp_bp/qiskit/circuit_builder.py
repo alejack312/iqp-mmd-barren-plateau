@@ -52,6 +52,8 @@ def build_iqp_circuit(
 
     # Final Hadamard layer
     qc.h(range(n))
+    # TODO: Week 5 (D6.1) split measured vs unmeasured builders and emit QASM /
+    # transpilation metadata so statevector, shots, and export use the same circuit spec.
     qc.measure_all()
 
     return qc

@@ -52,11 +52,15 @@ The upstream training script (`paper/training/train_iqp.py`) has `bitflip = True
 
 The training loss is the Maximum Mean Discrepancy (MMD) between the data distribution $p$ and the model distribution $q_\theta$:
 
-$$\text{MMD}^2(p, q_\theta) = \mathbb{E}_{a \sim P_\sigma} \left[ \left( \langle Z_a \rangle_p - \langle Z_a \rangle_{q_\theta} \right)^2 \right]$$
+$$
+\text{MMD}^2(p, q_\theta) = \mathbb{E}_{a \sim P_\sigma} \left[ \left( \langle Z_a \rangle_p - \langle Z_a \rangle_{q_\theta} \right)^2 \right]
+$$
 
 Here $Z_a$ is a "Z-word" operator — it measures the parity of the bits selected by the binary mask $a$:
 
-$$\langle Z_a \rangle = \sum_x q(x) \cdot (-1)^{a \cdot x}$$
+$$
+\langle Z_a \rangle = \sum_x q(x) \cdot (-1)^{a \cdot x}
+$$
 
 $P_\sigma$ is a distribution over Z-word masks derived from the Gaussian kernel with bandwidth $\sigma$. In `mmd_loss_iqp` (`iqpopt/gen_qml/iqp_methods.py`):
 
@@ -81,13 +85,17 @@ The model side (`tr_iqp`) is the interesting part.
 
 For the standard IQP circuit (`bitflip=False`), there's a closed-form result (from Van den Nest's theorem) that says:
 
-$$\langle Z_a \rangle_{q_\theta} = \mathbb{E}_{z \sim \text{Uniform}(\{0,1\}^n)} \left[ \cos\!\left(\Phi(\theta, z, a)\right) \right]$$
+$$
+\langle Z_a \rangle_{q_\theta} = \mathbb{E}_{z \sim \text{Uniform}(\{0,1\}^n)} \left[ \cos\!\left(\Phi(\theta, z, a)\right) \right]
+$$
 
 The expectation value of any Z-word under an IQP circuit is the average cosine of a phase, where the average is over uniformly random classical bitstrings $z$.
 
 The phase is (from `iqp_optimizer.py:op_expval_batch`, non-bitflip path):
 
-$$\Phi(\theta, z, a) = \sum_j \underbrace{(a \cdot g_j \bmod 2)}_{\text{gate selector}} \cdot \underbrace{2\theta_j}_{\text{weight}} \cdot \underbrace{(-1)^{z \cdot g_j}}_{\text{parity sign}}$$
+$$
+\Phi(\theta, z, a) = \sum_j \underbrace{(a \cdot g_j \bmod 2)}_{\text{gate selector}} \cdot \underbrace{2\theta_j}_{\text{weight}} \cdot \underbrace{(-1)^{z \cdot g_j}}_{\text{parity sign}}
+$$
 
 In code:
 
@@ -211,6 +219,8 @@ For random deep circuits, none of these hold. Computing even a single expectatio
 
 The formula that makes large-scale classical training of standard IQP circuits possible is:
 
-$$\boxed{\langle Z_a \rangle_{q_\theta} = \mathbb{E}_{z \sim \text{Uniform}} \left[ \cos\!\left( \sum_j 2\theta_j \cdot (a \cdot g_j \bmod 2) \cdot (-1)^{z \cdot g_j} \right) \right]}$$
+$$
+\boxed{\langle Z_a \rangle_{q_\theta} = \mathbb{E}_{z \sim \text{Uniform}} \left[ \cos\!\left( \sum_j 2\theta_j \cdot (a \cdot g_j \bmod 2) \cdot (-1)^{z \cdot g_j} \right) \right]}
+$$
 
 implemented in `iqpopt/iqp_optimizer.py:op_expval_batch` (non-bitflip path) and mirrored in our `src/iqp_bp/iqp/expectation.py`.

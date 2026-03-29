@@ -18,7 +18,8 @@ def main() -> None:
         description="IQP–MMD Barren Plateau experiments",
     )
     sub = parser.add_subparsers(dest="command", required=True)
-
+    # TODO: Week 1 (D1.2) add a config-validation / grid-preview subcommand so the
+    # locked experiment axes can be inspected before launching long sweeps.
     for cmd in ("run-scaling", "run-qiskit", "run-forge"):
         p = sub.add_parser(cmd)
         p.add_argument("config", help="Path to experiment YAML config")

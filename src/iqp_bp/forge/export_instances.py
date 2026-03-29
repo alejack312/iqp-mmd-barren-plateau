@@ -31,6 +31,8 @@ def export_to_forge(
     m = G.shape[0]
     output_path = Path(output_path)
 
+    # TODO: Week 7 (D9.1) emit overlap-graph, degree-constraint, and threshold facts
+    # so Forge can reason directly about the plateau-inducing structures from the spec.
     lines = []
     if model_template is not None:
         with open(model_template) as f:

@@ -34,6 +34,8 @@ def run(cfg: dict[str, Any]) -> None:
 
     from iqp_bp.forge.export_instances import export_to_forge
 
+    # TODO: Week 7 (D9.2/D9.3) replace export-only mode with automated structural
+    # searches that save counterexamples / invariants back into Python-readable results.
     for family in families:
         for n in n_qubits_list:
             m = n

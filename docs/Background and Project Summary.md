@@ -14,5 +14,14 @@ A recent development proposes a way around this issue for IQP circuits . The key
 
 The goal of this project is to investigate the barren plateau problem in the specific context of IQP circuits used for generative modeling. While the classical-training approach suggests that large-scale optimization may be feasible, it remains unclear whether the underlying loss landscape for IQP-based generative models still exhibits exponential concentration phenomena as the number of qubits increases. In other words, even if gradients can be computed classically, does their variance decay exponentially with system size, or does the special commuting structure of IQP circuits prevent this?
 
-The project aims to analyze and better understand this question, potentially by studying gradient variance scaling, concentration of measure effects, and the structure of the MMD loss landscape for IQP circuits. By clarifying whether barren plateaus persist or are mitigated in this setting, the project seeks to contribute one step toward understanding whether IQP-based quantum generative models can be both trainable at scale and capable of delivering a genuine sampling advantage at inference time.
+The umbrella of the project is to use IQP circuits for generative modeling with an MMD loss, perform the full parameter-training loop classically because training on quantum hardware is too expensive, and then perform inference by sampling from the learned IQP circuit on a quantum device. The motivating hope is that this "train on classical, deploy on quantum" setup can be practical while still lining up with the hardness intuition for sampling from IQP circuits.
 
+Concretely, the study is set up to compare:
+
+* IQP connectivity families: product state (single Z rotations on each qubit), 2D lattice, sparse Erdos-Renyi graph, complete graph.
+* MMD kernels: Gaussian kernel with bandwidth sweep, Laplacian kernel, and sums of Gaussian kernels with different bandwidths.
+* Initialization schemes: uniform, small-angle initialization, and data-dependent initialization.
+
+Across these choices, the central analysis question is whether the induced MMD loss landscapes exhibit barren plateaus, and in particular whether small-angle initialization can improve trainability.
+
+The project aims to analyze and better understand this question, potentially by studying gradient variance scaling, concentration of measure effects, and the structure of the MMD loss landscape for IQP circuits. By clarifying whether barren plateaus persist or are mitigated in this setting, the project seeks to contribute one step toward understanding whether IQP-based quantum generative models can be both trainable at scale and capable of delivering a genuine sampling advantage at inference time.
