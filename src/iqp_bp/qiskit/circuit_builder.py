@@ -54,6 +54,10 @@ def build_iqp_circuit(
     qc.h(range(n))
     # TODO: Week 5 (D6.1) split measured vs unmeasured builders and emit QASM /
     # transpilation metadata so statevector, shots, and export use the same circuit spec.
+    # Read first: QuantumCircuit https://quantum.cloud.ibm.com/docs/api/qiskit/2.1/qiskit.circuit.QuantumCircuit ;
+    # ParameterVector https://quantum.cloud.ibm.com/docs/en/api/qiskit/1.0/qiskit.circuit.ParameterVector ;
+    # qasm2 https://docs.quantum.ibm.com/api/qiskit/qasm2 ; transpile
+    # https://quantum.cloud.ibm.com/docs/api/qiskit/0.39/qiskit.compiler.transpile
     qc.measure_all()
 
     return qc

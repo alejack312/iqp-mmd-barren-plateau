@@ -96,6 +96,9 @@ def parameter_shift_gradient(
     """
     # TODO: Week 5 (D6.2/D6.3) lift these observable-level primitives to full
     # MMD^2 and gradient-SNR comparisons across exact, statevector, shots, and noise.
+    # Read first: Qiskit primitives https://quantum.cloud.ibm.com/docs/api/qiskit/dev/primitives ;
+    # SparsePauliOp https://docs.quantum.ibm.com/api/qiskit/0.24/qiskit.quantum_info.SparsePauliOp ;
+    # AerSimulator https://qiskit.github.io/qiskit-aer/stubs/qiskit_aer.AerSimulator.html
     estimate_fn = shot_based_expectation if use_shots else statevector_expectation
     kwargs = {"n_shots": n_shots} if use_shots else {}
 

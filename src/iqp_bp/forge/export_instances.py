@@ -33,6 +33,9 @@ def export_to_forge(
 
     # TODO: Week 7 (D9.1) emit overlap-graph, degree-constraint, and threshold facts
     # so Forge can reason directly about the plateau-inducing structures from the spec.
+    # Read first: Forge docs https://forge-fm.github.io/forge-documentation/ ;
+    # Forge constraints https://forge-fm.github.io/forge-documentation/building-models/constraints/constraints.html ;
+    # model intuition https://forge-fm.github.io/book/chapters/solvers/bounds_booleans_how_forge_works.html
     lines = []
     if model_template is not None:
         with open(model_template) as f:

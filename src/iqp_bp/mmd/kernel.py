@@ -40,6 +40,7 @@ def gaussian_spectral_weights(n: int, sigma: float) -> np.ndarray:
     # TODO: Week 1 (D1.1) confirm the exact Gaussian spectral normalization used by
     # the locked MMD^2 derivation and expose it explicitly for theory/implementation parity.
     # See docs/technical/glossary.md#locked-mmd2-derivation.
+    # Read first: NumPy Generator https://numpy.org/doc/stable/reference/random/generator.html
     tau = np.tanh(1.0 / sigma**2)
     return tau ** np.arange(n + 1)
 
@@ -101,6 +102,7 @@ def laplacian_sample_a(
         rng = np.random.default_rng()
     # TODO: Week 1 (D1.1) keep this as an explicit stub until the Laplacian MMD^2
     # decomposition is derived and checked against brute force on small n.
+    # Read first: NumPy Generator https://numpy.org/doc/stable/reference/random/generator.html
     weights = np.array([
         _laplacian_spectral_weight(n, w, sigma) * np.exp(_log_binom(n, w))
         for w in range(n + 1)
@@ -214,6 +216,7 @@ def multi_scale_gaussian_sample_a(
         rng = np.random.default_rng()
     # TODO: Week 6 (D8.1) validate this phase-2 kernel against the exact mixture
     # formula and make the component sweep part of the experiment grid, not a fixed default.
+    # Read first: pytest parametrize https://docs.pytest.org/en/7.1.x/how-to/parametrize.html
     w = np.array(weights if weights is not None else [1.0 / len(sigmas)] * len(sigmas), dtype=float)
     w = w / w.sum()
 

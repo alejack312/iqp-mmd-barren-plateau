@@ -43,6 +43,10 @@ def run(cfg: dict[str, Any]) -> None:
 
     # TODO: Week 5 (D6.2/D6.3) implement the actual classical/statevector/shots/noise
     # cross-check and record gradient-SNR plus shots-needed curves per regime.
+    # Read first: QuantumCircuit https://quantum.cloud.ibm.com/docs/api/qiskit/2.1/qiskit.circuit.QuantumCircuit ;
+    # Qiskit primitives https://quantum.cloud.ibm.com/docs/api/qiskit/dev/primitives ;
+    # AerSimulator https://qiskit.github.io/qiskit-aer/stubs/qiskit_aer.AerSimulator.html ;
+    # NoiseModel https://qiskit.github.io/qiskit-aer/stubs/qiskit_aer.noise.NoiseModel.html
     with open(out_path, "w") as fout:
         for family in families:
             for n in n_qubits_list:
@@ -52,6 +56,9 @@ def run(cfg: dict[str, Any]) -> None:
 
                 # TODO: Week 5 (D6.2) build the circuit, compare classical vs
                 # statevector vs shot-based estimators, and store the raw cross-check data.
+                # Read first: qasm2 https://docs.quantum.ibm.com/api/qiskit/qasm2 ;
+                # transpile https://quantum.cloud.ibm.com/docs/api/qiskit/0.39/qiskit.compiler.transpile ;
+                # json https://docs.python.org/3/library/json.html
                 record = {
                     "family": family,
                     "n": n,

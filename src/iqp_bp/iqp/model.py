@@ -40,6 +40,8 @@ class IQPModel:
             m = n
         # TODO: Week 1 (D1.3) preserve family / generation metadata on the model so
         # experiment records and Qiskit exports can recover the exact circuit provenance.
+        # Read first: json https://docs.python.org/3/library/json.html ; pathlib.Path
+        # https://docs.python.org/3/library/pathlib.html#pathlib.Path
         G = make_hypergraph(family=family, n=n, m=m, rng=rng, **family_kwargs)
         return cls(G)
 

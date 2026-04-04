@@ -26,6 +26,9 @@ def hypergraph_matrix(
     """
     # TODO: Week 2 (D2.1) add strategies that sample the four SMART families
     # directly so validation covers the real experiment regimes, not just arbitrary G.
+    # Read first: Hypothesis API https://hypothesis.readthedocs.io/en/latest/reference/api.html ;
+    # strategies https://hypothesis.readthedocs.io/en/latest/reference/strategies.html ;
+    # NumPy integration https://hypothesis.readthedocs.io/en/latest/numpy.html
     n = draw(st.integers(min_value=n_min, max_value=n_max))
     m = draw(st.integers(min_value=m_min, max_value=m_max))
     G = draw(
@@ -68,6 +71,9 @@ def iqp_parameters(
     """Draw IQP parameter vector θ under given initialization scheme."""
     # TODO: Week 2 (D2.1) add coverage for the data-dependent initializer and the
     # full small-angle sweep {0.01, 0.1, 0.3} required by the SMART spec.
+    # Read first: Hypothesis API https://hypothesis.readthedocs.io/en/latest/reference/api.html ;
+    # strategies https://hypothesis.readthedocs.io/en/latest/reference/strategies.html ;
+    # NumPy integration https://hypothesis.readthedocs.io/en/latest/numpy.html
     if scheme == "uniform":
         return draw(
             arrays(

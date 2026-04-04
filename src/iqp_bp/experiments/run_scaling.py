@@ -38,6 +38,9 @@ def run(cfg: dict[str, Any]) -> None:
     # Placeholder data: product Bernoulli (⟨Z_a⟩_p = 0 for |a|≥1)
     # TODO: Weeks 3-4 (D4.1) expand this runner to sweep the full Cartesian grid:
     # bandwidth list, small-angle std list, ER p list, and all SMART dataset targets.
+    # Read first: itertools.product https://docs.python.org/3/library/itertools.html#itertools.product ;
+    # pathlib.Path https://docs.python.org/3/library/pathlib.html#pathlib.Path ; json
+    # https://docs.python.org/3/library/json.html
     dataset_cfg = cfg["dataset"]
 
     total = len(families) * len(kernels) * len(inits) * len(n_qubits_list)
@@ -85,6 +88,9 @@ def run(cfg: dict[str, Any]) -> None:
 
                         # TODO: Weeks 3-4 (D4.2/D4.3) fit polynomial vs exponential
                         # scaling here and emit the summary artifacts used in the interim memo.
+                        # Read first: scipy.optimize.curve_fit
+                        # https://docs.scipy.org/doc/scipy-1.9.0/reference/generated/scipy.optimize.curve_fit.html ;
+                        # json https://docs.python.org/3/library/json.html
                         done += 1
                         log.info(f"[{done}/{total}] family={family} kernel={kernel} init={init_scheme} n={n}")
 
@@ -129,6 +135,7 @@ def _make_data(dataset_cfg, n, seed):
         return rng.integers(0, 2, size=(N, n), dtype=np.uint8)
     # TODO: Weeks 3-4 (D4.1) implement the Ising-like synthetic target and the
     # structured real/binary-mixture target from the SMART dataset plan.
+    # Read first: NumPy Generator https://numpy.org/doc/stable/reference/random/generator.html
     raise NotImplementedError(f"Dataset type {dtype!r} not yet implemented")
 
 
@@ -145,6 +152,8 @@ def _make_theta(scheme, m, init_cfg, seed):
     elif scheme == "data_dependent":
         # TODO: Weeks 3-4 (D4.1) replace this stub with the covariance-informed
         # data-dependent initializer required by the SMART comparison study.
+        # Read first: JAX random https://docs.jax.dev/en/latest/jax.random.html ;
+        # NumPy Generator https://numpy.org/doc/stable/reference/random/generator.html
         return rng.normal(0, 0.01, size=m)  # stub
     raise ValueError(f"Unknown init scheme {scheme!r}")
 
@@ -159,6 +168,7 @@ def _get_kernel_params(kernel, n, kernel_cfg):
     elif kernel == "multi_scale_gaussian":
         # TODO: Week 6 (D8.1) promote the multi-scale Gaussian config into the
         # phase-2 sweep once the Gaussian baseline is fully characterized.
+        # Read first: itertools.product https://docs.python.org/3/library/itertools.html#itertools.product
         msg = kernel_cfg.get("multi_scale_gaussian", {})
         return {"sigmas": msg.get("sigmas", [sigma]), "weights": msg.get("weights")}
     elif kernel == "polynomial":

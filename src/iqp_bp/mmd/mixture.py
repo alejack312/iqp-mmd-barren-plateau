@@ -38,5 +38,7 @@ def dataset_expectations_batch(data: np.ndarray, a_batch: np.ndarray) -> np.ndar
     """
     # TODO: Weeks 3-4 (D4.1) add cached parity statistics and structured target-data
     # helpers for the Ising-like and binary-mixture datasets in the SMART plan.
+    # Read first: pathlib.Path https://docs.python.org/3/library/pathlib.html#pathlib.Path ;
+    # json https://docs.python.org/3/library/json.html
     parities = (data @ a_batch.T) % 2  # (N, B)
     return (1 - 2 * parities).mean(axis=0)  # (B,)

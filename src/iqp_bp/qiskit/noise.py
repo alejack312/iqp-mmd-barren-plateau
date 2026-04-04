@@ -63,6 +63,11 @@ def combined_noise_model(error_rate: float, readout_rate: float | None = None):
 
     # TODO: Week 6 (D8.2) add amplitude-damping and backend-inspired presets so the
     # noise study covers the SMART comparison set beyond depolarizing/readout noise.
+    # Read first: NoiseModel https://qiskit.github.io/qiskit-aer/stubs/qiskit_aer.noise.NoiseModel.html ;
+    # depolarizing_error https://qiskit.github.io/qiskit-aer/stubs/qiskit_aer.noise.depolarizing_error.html ;
+    # ReadoutError https://qiskit.github.io/qiskit-aer/stubs/qiskit_aer.noise.ReadoutError.html ;
+    # amplitude_damping_error https://qiskit.github.io/qiskit-aer/stubs/qiskit_aer.noise.amplitude_damping_error.html ;
+    # thermal_relaxation_error https://qiskit.github.io/qiskit-aer/stubs/qiskit_aer.noise.thermal_relaxation_error.html
     if readout_rate is None:
         readout_rate = error_rate / 10.0
 

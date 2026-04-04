@@ -44,6 +44,11 @@ def grad_expectation_analytic(
         rng = np.random.default_rng()
     # TODO: Week 2 (D2.1) implement the JAX autodiff estimator promised in the
     # SMART spec and compare it against this analytic path on small-n problems.
+    # Read first: jax.grad https://docs.jax.dev/en/latest/_autosummary/jax.grad.html ;
+    # jax.value_and_grad https://docs.jax.dev/en/latest/_autosummary/jax.value_and_grad.html ;
+    # jax.vmap https://docs.jax.dev/en/latest/_autosummary/jax.vmap.html ;
+    # jax.jit https://docs.jax.dev/en/latest/_autosummary/jax.jit.html ;
+    # jax.random https://docs.jax.dev/en/latest/jax.random.html
     n = G.shape[1]
     g_i = G[param_idx]
 
@@ -163,6 +168,8 @@ def estimate_gradient_variance(
         rng = np.random.default_rng()
     # TODO: Weeks 3-4 (D4.2/D4.3) extend this summary to include aggregate gradient-norm
     # proxies, heavy-tail checks, and median-of-means statistics for plateau diagnosis.
+    # Read first: scipy.optimize.curve_fit
+    # https://docs.scipy.org/doc/scipy-1.9.0/reference/generated/scipy.optimize.curve_fit.html
     grads = [
         grad_mmd2_analytic(
             theta=th, G=G, data=data, param_idx=param_idx,

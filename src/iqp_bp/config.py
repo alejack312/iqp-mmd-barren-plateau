@@ -26,6 +26,10 @@ def load_config(path: str | Path, base_path: str | Path = _BASE_CONFIG_PATH) -> 
     """
     # TODO: Week 1 (D1.2) validate the merged config against the schema and persist
     # the fully resolved experiment grid for reproducible reruns and scope-lock review.
+    # Read first: PyYAML https://pyyaml.org/wiki/PyYAMLDocumentation ; pathlib.Path
+    # https://docs.python.org/3/library/pathlib.html#pathlib.Path ; itertools.product
+    # https://docs.python.org/3/library/itertools.html#itertools.product ; json
+    # https://docs.python.org/3/library/json.html
     base = _load_yaml(base_path)
     override = _load_yaml(path)
     return _deep_merge(base, override)

@@ -20,6 +20,9 @@ def main() -> None:
     sub = parser.add_subparsers(dest="command", required=True)
     # TODO: Week 1 (D1.2) add a config-validation / grid-preview subcommand so the
     # locked experiment axes can be inspected before launching long sweeps.
+    # Read first: PyYAML https://pyyaml.org/wiki/PyYAMLDocumentation ; pathlib.Path
+    # https://docs.python.org/3/library/pathlib.html#pathlib.Path ; json
+    # https://docs.python.org/3/library/json.html
     for cmd in ("run-scaling", "run-qiskit", "run-forge"):
         p = sub.add_parser(cmd)
         p.add_argument("config", help="Path to experiment YAML config")

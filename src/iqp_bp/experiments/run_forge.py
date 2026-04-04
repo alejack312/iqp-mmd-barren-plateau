@@ -36,6 +36,10 @@ def run(cfg: dict[str, Any]) -> None:
 
     # TODO: Week 7 (D9.2/D9.3) replace export-only mode with automated structural
     # searches that save counterexamples / invariants back into Python-readable results.
+    # Read first: Forge docs https://forge-fm.github.io/forge-documentation/ ;
+    # Forge constraints https://forge-fm.github.io/forge-documentation/building-models/constraints/constraints.html ;
+    # Forge options https://forge-fm.github.io/forge-documentation/running-models/options.html ;
+    # json https://docs.python.org/3/library/json.html
     for family in families:
         for n in n_qubits_list:
             m = n
