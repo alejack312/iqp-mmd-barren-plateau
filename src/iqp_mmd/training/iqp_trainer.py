@@ -2,6 +2,7 @@
 
 from pathlib import Path
 import pickle
+import warnings
 
 import numpy as np
 import jax
@@ -10,6 +11,11 @@ import jax.numpy as jnp
 import iqpopt.gen_qml as gen
 from iqpopt.utils import initialize_from_data
 from iqpopt import IqpSimulator, Trainer
+
+from iqp_mmd.checkpoint_export import (
+    generator_matrix_from_gates,
+    save_deterministic_iqp_checkpoint,
+)
 
 
 def prepare_iqp_training(
@@ -42,6 +48,7 @@ def prepare_iqp_training(
     gates = gate_fn(**gates_config["kwargs"])
 
     model = IqpSimulator(gates=gates, **hyperparams["model_config"], bitflip=bitflip)
+    model._gates_export = gates
     trainer = Trainer(loss=gen.mmd_loss_iqp, **hyperparams["trainer_config"])
     train_config = hyperparams["train_config"]
 
@@ -132,6 +139,35 @@ def train_iqp(
         params_dir.mkdir(parents=True, exist_ok=True)
         with open(params_dir / f"params_{name}_{dataset_name}.pkl", "wb") as f:
             pickle.dump(trainer.final_params, f)
+
+        try:
+            checkpoint_path = params_dir / f"checkpoint_{name}_{dataset_name}.npz"
+            gates = getattr(model, "_gates_export", None)
+            if gates is None:
+                raise ValueError("Model does not expose `_gates_export`; cannot reconstruct G.")
+
+            n_qubits = int(hyperparams["model_config"]["n_qubits"])
+            generator_matrix = generator_matrix_from_gates(gates, n_qubits=n_qubits)
+            save_deterministic_iqp_checkpoint(
+                path=checkpoint_path,
+                G=generator_matrix,
+                theta=np.asarray(trainer.final_params, dtype=np.float64),
+                metadata={
+                    "dataset_name": dataset_name,
+                    "gate_fn": hyperparams["gates_config"]["name"],
+                    "model_name": name,
+                    "n_qubits": n_qubits,
+                    "seed": int(seed),
+                    "bitflip": bool(bitflip),
+                    "source": "iqp_mmd.train_iqp",
+                },
+            )
+        except Exception as exc:
+            warnings.warn(
+                "Failed to export deterministic IQP checkpoint for anti-concentration "
+                f"validation: {exc}",
+                RuntimeWarning,
+            )
 
     return {
         "model": model,

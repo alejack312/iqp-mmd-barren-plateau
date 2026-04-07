@@ -1,0 +1,41 @@
+# configs/experiments/validation.yaml
+# Concrete deterministic anti-concentration validation config.
+#
+# This file is intentionally small and fully exact:
+# - it builds a real IQPModel from circuit + init settings
+# - it stays in the small-n regime so probability_vector_exact() is feasible
+# - it writes one JSON summary and one CSV threshold table
+
+experiment:
+  name: anti_concentration_validation
+  description: "Exact small-n anti-concentration validation for one concrete complete-graph IQP model"
+  seed: 7
+  output_dir: results/validation/
+  log_level: INFO
+
+circuit:
+  # Use an entangling family rather than the product-state baseline so the
+  # example exercises a nontrivial output distribution.
+  family: complete_graph
+  # Six qubits is small enough for exact probabilities but large enough to show
+  # meaningful deviation from trivial toy cases.
+  n_qubits: 6
+  # complete_graph ignores n_generators and uses all C(n, 2) ZZ pairs.
+  n_generators: 6
+
+init:
+  # Use a deterministic random seed from experiment.seed and a broad angle
+  # distribution so the example model is not artificially near the identity.
+  scheme: uniform
+  uniform:
+    low: -3.14159265
+    high: 3.14159265
+
+validation:
+  # Force the exact-model path rather than loading probabilities or samples.
+  max_qubits: 12
+  alphas: [0.5, 1.0, 2.0]
+  primary_alpha: 1.0
+  beta_min: 0.25
+  second_moment_threshold: 1.0
+  output_stem: complete_graph_n6_seed7

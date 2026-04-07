@@ -72,6 +72,18 @@ Implementation docs index:
   Current state: the MMD^2 estimator exists, but it only returns a scalar and does not expose contribution-level diagnostics.
   Docs to read first: [NumPy Generator], [json module].
 
+### Anti-Concentration Track
+
+Deadline for `AC1`-`AC6`: `2026-04-08 10:30` local time.
+
+- `[x] AC1` [Due Apr 8 10:30] [Write the anti-concentration technical note and lock the repo's finite-n decision rule](docs/technical/anti-concentration.md)
+  Current state: the anti-concentration technical note is locked and comprehensive, covering threshold and second-moment definitions and the deterministic implementation targets.
+  Docs to read first: local paper `docs/papers/2512.24801v1.pdf`, [locked MMD^2 derivation](docs/technical/glossary.md#locked-mmd2-derivation), [the learning task](docs/technical/learning-task.md).
+
+- `[x] AC2` [Due Apr 8 10:30] [Add exact small-n IQP output-probability extraction and normalization checks](src/iqp_bp/iqp/model.py#L41)
+  Current state: the exact probability extraction path `probability_vector_exact` (and its alias) is implemented in `IQPModel` using an in-place Walsh-Hadamard transform.
+  Docs to read first: [NumPy Generator], [itertools.product], local paper `docs/papers/2512.24801v1.pdf`. Keep this path exact and small-n only; do not blur it with sample-based approximations.
+
 ### Scaling Inputs
 
 - `[x] S1` [Weeks 3-4] [Calibrate the sparse Erdos-Renyi family to the SMART bounded-degree regime](src/iqp_bp/hypergraph/families.py#L48)
@@ -136,6 +148,21 @@ Implementation docs index:
   Current state: uniform and small-angle strategies exist, but the full sweep and data-dependent init are missing.
   Docs to read first: [Hypothesis API], [Hypothesis strategies], [Hypothesis NumPy], [pytest parametrize].
 
+- `[x] AC3` [Due Apr 8 10:30] [Implement the deterministic anti-concentration checker over exact probability vectors and sample histograms](src/iqp_bp/experiments/run_validation.py#L1)
+  Depends on: `AC1`, `AC2`
+  Current state: the anti-concentration checker `check_anti_concentration` and associated evaluators are implemented in `run_validation.py`, supporting both exact vectors and empirical histograms.
+  Docs to read first: [NumPy Generator], [json module], local paper `docs/papers/2512.24801v1.pdf`. The exact small-n path is the primary claim; histogram mode should be explicitly labeled as a secondary diagnostic.
+
+- `[x] AC4` [Due Apr 8 10:30] [Extend the validation runner to load trained IQP checkpoints or generated bitstrings and serialize anti-concentration artifacts](src/iqp_bp/experiments/run_validation.py#L1)
+  Depends on: `AC2`, `AC3`, `P4`
+  Current state: the validation runner supports checkpoint loading (`.npz`), sample loading, and serializes results to JSON and CSV artifacts via `write_anti_concentration_artifacts`.
+  Docs to read first: [pathlib.Path], [json module]. Preserve provenance: family, n, training seed, checkpoint path, and whether the result came from exact probabilities or sampled counts.
+
+- `[x] AC5` [Due Apr 8 10:30] [Add deterministic tests for the anti-concentration pass/fail boundary and the sample-to-exact convergence path](tests/test_expectation_small_n.py#L1)
+  Depends on: `AC2`, `AC3`
+  Current state: comprehensive tests exist in `test_anti_concentration.py`, `test_iqp_probability_vector_small_n.py`, and `test_run_validation.py`.
+  Docs to read first: [pytest parametrize], [NumPy Generator]. Include at least: uniform-distribution pass, delta-distribution fail, and a toy histogram that approaches the exact checker as sample size grows.
+
 ### Scaling v1
 
 - `[~] S4` [Weeks 3-4] [Replace the data-dependent init stub with the covariance-informed initializer](src/iqp_bp/experiments/run_scaling.py#L146)
@@ -162,6 +189,11 @@ Implementation docs index:
   Depends on: `S6`, `S7`
   Current state: raw JSONL records are written, but no fitting or memo-oriented summaries are produced.
   Docs to read first: [SciPy curve_fit], [pathlib.Path], [json module].
+
+- `[ ] AC6` [Due Apr 8 10:30] [Emit anti-concentration summaries and checkpoint plots alongside the scaling outputs](src/iqp_bp/experiments/run_scaling.py#L39)
+  Depends on: `AC4`, `S6`
+  Current state: the scaling runner writes gradient-variance records only; it does not attach output-distribution diagnostics for the trained checkpoints chosen for follow-up.
+  Docs to read first: [pathlib.Path], [json module], [SciPy curve_fit]. Keep the anti-concentration output schema separate from the gradient-scaling schema so downstream analysis can distinguish them cleanly.
 
 ### Qiskit Validation
 
@@ -207,19 +239,23 @@ Implementation docs index:
 
 ### Wave A - Parallelizable immediately
 
-`T1`, `T2`, `T3`, `P1`, `P2`, `P3`, `P4`, `P5`, `S1`, `S2`, `S3`, `Q1`, `Q2`, `F1`
+`T1`, `T2`, `T3`, `P1`, `P2`, `P3`, `P4`, `P5`, `AC1`, `AC2`, `S1`, `S2`, `S3`, `Q1`, `Q2`, `F1`
+
+### Apr 8 10:30am critical path
+
+`AC1`, `AC2`, `AC3`, `AC4`, `AC5`, `AC6`
 
 ### Wave B - Unlocked after Wave A
 
-`P6`, `V1`, `V2`, `V3`, `V4`, `S4`, `S5`
+`P6`, `V1`, `V2`, `V3`, `V4`, `AC3`, `AC5`, `S4`, `S5`
 
 ### Wave C - Core experiment enablement
 
-`V5`, `S6`, `S7`, `Q3`
+`V5`, `AC4`, `S6`, `S7`, `Q3`
 
 ### Wave D - Reporting and cross-check runs
 
-`S8`, `Q4`, `K1`, `F2`
+`S8`, `AC6`, `Q4`, `K1`, `F2`
 
 ### Wave E - Final phase-2 execution tasks
 

@@ -1,0 +1,42 @@
+{
+  "beta_min": 0.25,
+  "collision_probability": 0.5,
+  "effective_support": 2.0,
+  "effective_support_ratio": 0.5,
+  "max_probability": 0.5,
+  "max_probability_scaled": 2.0,
+  "mode": "empirical_histogram",
+  "n": 2,
+  "num_outcomes": 4,
+  "passes_primary_threshold": true,
+  "passes_second_moment_threshold": true,
+  "primary_alpha": 1.0,
+  "primary_beta_hat": 0.5,
+  "provenance": {
+    "samples_path": "tests\\_tmp_validation\\34a03ab8609f496782c2459de297d181\\samples.csv",
+    "source": "samples_path"
+  },
+  "scaled_second_moment": 2.0,
+  "second_moment_threshold": 1.0,
+  "threshold_checks": [
+    {
+      "alpha": 0.5,
+      "beta_hat": 0.5,
+      "passes_beta_threshold": true,
+      "threshold_probability": 0.125
+    },
+    {
+      "alpha": 1.0,
+      "beta_hat": 0.5,
+      "passes_beta_threshold": true,
+      "threshold_probability": 0.25
+    },
+    {
+      "alpha": 2.0,
+      "beta_hat": 0.5,
+      "passes_beta_threshold": true,
+      "threshold_probability": 0.5
+    }
+  ],
+  "uniform_probability": 0.25
+}

@@ -116,6 +116,45 @@ Use 3 targets (start simple, then structured):
 2. Ising-like synthetic (pairwise correlations)  
 3. Real binary dataset (small) or structured synthetic mixture.
 
+### **Output-distribution anti-concentration target**
+
+In addition to gradient-variance scaling, we will evaluate whether the trained IQP output
+distribution itself is anti-concentrated. For a distribution `p_theta` on `{0,1}^n`, the
+reference criterion is:
+\[
+\Pr_{x \sim \mathrm{Unif}(\{0,1\}^n)}\left[p_\theta(x) \ge \alpha 2^{-n}\right] \ge \beta
+\]
+for constants `alpha, beta > 0` independent of `n`.
+
+Operationally, the code will report the finite-`n` threshold curve
+\[
+\hat{\beta}_{p_\theta}(\alpha) = 2^{-n}\left|\{x \in \{0,1\}^n : p_\theta(x) \ge \alpha 2^{-n}\}\right|
+\]
+for a small fixed grid such as `alpha in {0.25, 0.5, 1.0, 2.0}`. A run passes the empirical
+anti-concentration check at threshold pair `(alpha, beta_min)` only when
+`beta_hat_p_theta(alpha) >= beta_min`.
+
+Deterministic implementation plan:
+
+* **Exact regime (primary):** for trained IQP circuits with `n <= 16-20`, reconstruct the full
+  probability vector `p_theta(x)` and evaluate `beta_hat_p_theta(alpha)` exactly.
+* **Sample regime (secondary):** for larger `n`, estimate the occupied mass pattern from generated
+  samples and report diagnostics only; this does not replace the exact small-`n` claim.
+* **Supporting diagnostics:** report collision probability `sum_x p_theta(x)^2`, scaled
+  `2^n sum_x p_theta(x)^2`, `max_x 2^n p_theta(x)`, and effective support size
+  `1 / sum_x p_theta(x)^2`.
+
+Planned deterministic API:
+
+* `check_anti_concentration(probabilities, alpha=0.5, beta_min=0.1, atol=1e-12) -> dict`
+
+The return payload should include `n`, `alpha`, `beta_hat`, `passes_threshold`,
+`collision_probability`, `scaled_l2`, `max_probability_scaled`, and `effective_support_ratio`.
+
+This evaluation belongs on the deterministic experiment / validation side. Training may still
+happen through `iqp_mmd`, but the anti-concentration claim and serialized evidence should be
+produced by `iqp_bp` after loading trained parameters or generated bitstrings.
+
 ---
 
 # **3\) Weekly / Biweekly Execution Plan (Deliverables)**
@@ -169,6 +208,17 @@ Use 3 targets (start simple, then structured):
 
 **Deliverables (biweekly)**
 
+* D4.1a: Anti-concentration workstream completed by Apr 8, 10:30am:
+  * write a technical note `docs/technical/anti-concentration.md` explaining the paper-level
+    definition, the finite-n surrogate used in this repo, and the limits of sample-only checks
+  * add an exact small-n probability-vector extraction path for trained IQP circuits
+  * add a deterministic anti-concentration checker and JSON/CSV result schema on the validation side
+* D4.2a: Add anti-concentration figures for selected trained checkpoints:
+  * threshold curves for `2^n p_theta(x)`
+  * collision-probability and max-probability trends
+* D4.3a: Add an interim interpretation question:
+  * do the trained output distributions remain anti-concentrated in the regimes that appear trainable?
+
 * D4.1: Experiment grid v1 completed (Phase 1 — Gaussian kernel):
   * Circuit families: 4 (product state, 2D lattice, sparse Erdős–Rényi, complete graph)
   * Kernel: Gaussian with σ ∈ {0.1, 0.5, 1.0, 2.0, 5.0} (bandwidth sweep)
@@ -193,6 +243,9 @@ Use 3 targets (start simple, then structured):
 * Use fixed computational budgets:  
   * num\_a\_samples (mixture): e.g., 256–2048  
   * num\_z\_samples: tuned to stabilize variance estimates.
+* Route trained-parameter snapshots into the deterministic validation runner:
+  * exact probabilities first for small `n`
+  * sample-histogram diagnostics second for larger `n`
 
 ---
 
@@ -359,10 +412,11 @@ Minimum defaults:
 4. Derivation of gradient estimator (kernel-parametric form, with bandwidth σ as explicit axis)
 5. Hypothesis-driven experiment design
 6. Classical scaling results (connectivity × kernel × init grid)
-7. Qiskit validation (shots + noise)
-8. Forge structural findings
-9. Synthesis: when/why plateaus occur — role of kernel, connectivity, and initialization
-10. Limitations and future work
+7. Anti-concentration diagnostics for trained output distributions
+8. Qiskit validation (shots + noise)
+9. Forge structural findings
+10. Synthesis: when/why plateaus occur — role of kernel, connectivity, initialization, and output-distribution shape
+11. Limitations and future work
 
 ---
 
@@ -378,28 +432,43 @@ By May 15, 2026, the project is “successful” if:
 and you can support it with:
 
 * ≥ 12 scaling plots (covering bandwidth × connectivity comparison under Gaussian; kernel comparison panels where available; init comparison)
+* ≥ 1 exact small-`n` anti-concentration study on trained IQP output distributions, plus a documented
+  sample-based follow-up for larger `n`
 * ≥ 1 Qiskit shot/noise study
 * ≥ 1 structural insight from Forge or a minimal counterexample
 * A clear answer to: “does the choice of bandwidth (and kernel family) determine whether this MMD loss exhibits a barren plateau?”
+* A clear answer to: “in the regimes that train best, are the learned output distributions still
+  anti-concentrated, or do they become sparse / structured?”
 
 ---
 
-# **7\) Immediate Next Actions (Today → 72 hours)**
+# **7\) Immediate Next Actions (Apr 7 → Apr 8, 10:30am)**
 
-1. Create `ScopeLock.md` with:
-   * circuit families list (product state, 2D lattice, sparse Erdős–Rényi, complete graph)
-   * kernel types list with explicit MMD² written out for Gaussian (primary) + Laplacian + multi-scale Gaussian
-   * dataset plan
-   * exact metrics (which variance, over what randomness, which init schemes)
-   * statement: "does this loss exhibit a barren plateau?" as the organizing question for each (connectivity, bandwidth σ) pair under Gaussian kernel
-2. Create repo skeleton + configs (axes: `family`, `kernel`, `bandwidth`, `init`)
-3. Implement smallest end-to-end run:
-   * generate hypergraph (start with product state and complete graph as extremes)
-   * compute ⟨Z_a⟩_{q_θ}
-   * compute MMD² estimate with Gaussian kernel (primary)
-   * compute one gradient estimate
-4. Add correctness test for n≤10 via brute force
-5. Add stub implementations for Laplacian and multi-scale Gaussian kernels (tested against Gaussian on trivial cases)
+1. Write `docs/technical/anti-concentration.md`:
+   * explain the paper-level anti-concentration criterion
+   * define the finite-`n` threshold statistic `beta_hat_p_theta(alpha)`
+   * explain why exact probability vectors are the primary validation object and sample histograms are secondary
+2. Add exact small-`n` output-probability extraction for deterministic validation:
+   * input: trained IQP circuit / parameter snapshot
+   * output: normalized probability vector over `{0,1}^n`
+   * target regime: `n <= 16-20`
+3. Add a deterministic checker function on the `iqp_bp` side:
+   * `check_anti_concentration(probabilities, alpha=0.5, beta_min=0.1, atol=1e-12)`
+   * return threshold result plus collision-probability and max-probability diagnostics
+4. Extend the validation runner so it can:
+   * load trained IQP parameters or generated bitstrings
+   * run the anti-concentration check
+   * serialize JSON/CSV outputs for downstream plots and memo writing
+5. Add curated deterministic tests:
+   * uniform distribution should pass
+   * delta / highly concentrated distributions should fail
+   * sample-based estimator should approach the exact checker on toy cases
+6. Produce the first anti-concentration note for the week:
+   * one exact small-`n` trained example
+   * one sample-based larger-`n` diagnostic example
+   * a short memo stating whether the learned distribution looks anti-concentrated or sparse
+
+Hard deadline for items 1-6 above: **Wednesday, Apr 8, 2026 at 10:30am**.
 
 If you want, I can also produce:
 

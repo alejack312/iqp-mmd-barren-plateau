@@ -1,0 +1,47 @@
+{
+  "beta_min": 0.25,
+  "collision_probability": 0.2170380167567952,
+  "effective_support": 4.607487733914207,
+  "effective_support_ratio": 0.2879679833696379,
+  "max_probability": 0.3455213432593643,
+  "max_probability_scaled": 5.528341492149829,
+  "mode": "exact_iqp_model",
+  "n": 4,
+  "num_outcomes": 16,
+  "passes_primary_threshold": true,
+  "passes_second_moment_threshold": true,
+  "primary_alpha": 1.0,
+  "primary_beta_hat": 0.3125,
+  "provenance": {
+    "checkpoint_path": "results\\scaling_ac_smoke\\checkpoints\\complete_graph_n4_gaussian_uniform_seed0.npz",
+    "family": "complete_graph",
+    "init": "uniform",
+    "kernel": "gaussian",
+    "n": 4,
+    "source": "run_scaling",
+    "theta_seed_index": 0
+  },
+  "scaled_second_moment": 3.4726082681087234,
+  "second_moment_threshold": 1.0,
+  "threshold_checks": [
+    {
+      "alpha": 0.5,
+      "beta_hat": 0.4375,
+      "passes_beta_threshold": true,
+      "threshold_probability": 0.03125
+    },
+    {
+      "alpha": 1.0,
+      "beta_hat": 0.3125,
+      "passes_beta_threshold": true,
+      "threshold_probability": 0.0625
+    },
+    {
+      "alpha": 2.0,
+      "beta_hat": 0.125,
+      "passes_beta_threshold": false,
+      "threshold_probability": 0.125
+    }
+  ],
+  "uniform_probability": 0.0625
+}
