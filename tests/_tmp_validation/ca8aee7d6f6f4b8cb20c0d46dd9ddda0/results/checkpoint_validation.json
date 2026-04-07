@@ -1,0 +1,44 @@
+{
+  "beta_min": 0.25,
+  "collision_probability": 1.0,
+  "effective_support": 1.0,
+  "effective_support_ratio": 0.25,
+  "max_probability": 1.0,
+  "max_probability_scaled": 4.0,
+  "mode": "exact_iqp_model",
+  "n": 2,
+  "num_outcomes": 4,
+  "passes_primary_threshold": true,
+  "passes_second_moment_threshold": true,
+  "primary_alpha": 1.0,
+  "primary_beta_hat": 0.25,
+  "provenance": {
+    "checkpoint_path": "tests\\_tmp_validation\\ca8aee7d6f6f4b8cb20c0d46dd9ddda0\\toy_checkpoint.npz",
+    "family": "product_state",
+    "seed": 123,
+    "source": "checkpoint"
+  },
+  "scaled_second_moment": 4.0,
+  "second_moment_threshold": 1.0,
+  "threshold_checks": [
+    {
+      "alpha": 0.5,
+      "beta_hat": 0.25,
+      "passes_beta_threshold": true,
+      "threshold_probability": 0.125
+    },
+    {
+      "alpha": 1.0,
+      "beta_hat": 0.25,
+      "passes_beta_threshold": true,
+      "threshold_probability": 0.25
+    },
+    {
+      "alpha": 2.0,
+      "beta_hat": 0.25,
+      "passes_beta_threshold": true,
+      "threshold_probability": 0.5
+    }
+  ],
+  "uniform_probability": 0.25
+}

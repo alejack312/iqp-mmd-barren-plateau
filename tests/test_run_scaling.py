@@ -73,6 +73,12 @@ def test_run_scaling_writes_anti_concentration_fields_for_small_n():
         assert isinstance(record["ac_passes_primary_threshold"], bool)
         assert isinstance(record["ac_passes_second_moment_threshold"], bool)
         assert set(record["ac_beta_hat_by_alpha"].keys()) == {"0.5", "1.0"}
+        assert record["bandwidth"] == 1.0
+        assert record["dataset_type"] == "product_bernoulli"
+        assert Path(record["ac_summary_path"]).exists()
+        assert Path(record["ac_thresholds_path"]).exists()
+        assert Path(record["ac_threshold_plot_path"]).exists()
+        assert Path(record["ac_diagnostics_plot_path"]).exists()
         checkpoint_path = Path(record["ac_checkpoint_path"])
         assert checkpoint_path.exists()
         model, metadata = load_iqp_checkpoint(checkpoint_path)
