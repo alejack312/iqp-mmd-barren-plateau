@@ -348,12 +348,14 @@ def write_anti_concentration_artifacts(
     output_dir: str | Path,
     stem: str = "anti_concentration",
 ) -> dict[str, Path]:
-    """Write the validation summary to JSON and thresholds to CSV."""
+    """Write the validation summary, threshold CSV, and basic plots."""
     directory = Path(output_dir)
     directory.mkdir(parents=True, exist_ok=True)
 
     summary_path = directory / f"{stem}.json"
     thresholds_path = directory / f"{stem}_thresholds.csv"
+    threshold_plot_path = directory / f"{stem}_threshold_curve.png"
+    diagnostics_plot_path = directory / f"{stem}_diagnostics.png"
 
     with open(summary_path, "w", encoding="utf-8") as handle:
         json.dump(result, handle, indent=2, sort_keys=True)
@@ -367,7 +369,75 @@ def write_anti_concentration_artifacts(
         for row in result["threshold_checks"]:
             writer.writerow(row)
 
-    return {"summary_path": summary_path, "thresholds_path": thresholds_path}
+    _write_anti_concentration_threshold_plot(result, threshold_plot_path)
+    _write_anti_concentration_diagnostics_plot(result, diagnostics_plot_path)
+
+    return {
+        "summary_path": summary_path,
+        "thresholds_path": thresholds_path,
+        "threshold_plot_path": threshold_plot_path,
+        "diagnostics_plot_path": diagnostics_plot_path,
+    }
+
+
+def _write_anti_concentration_threshold_plot(result: dict[str, Any], path: Path) -> None:
+    """Plot beta_hat(alpha) for one anti-concentration result."""
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    threshold_checks = result["threshold_checks"]
+    alphas = [float(entry["alpha"]) for entry in threshold_checks]
+    beta_hats = [float(entry["beta_hat"]) for entry in threshold_checks]
+    beta_min = float(result["beta_min"])
+    primary_alpha = float(result["primary_alpha"])
+
+    fig, ax = plt.subplots(figsize=(6, 4))
+    ax.plot(alphas, beta_hats, marker="o", linewidth=2)
+    ax.axhline(beta_min, linestyle="--", linewidth=1.5, color="tab:red", label="beta_min")
+    ax.axvline(primary_alpha, linestyle=":", linewidth=1.5, color="tab:gray", label="primary_alpha")
+    ax.set_xlabel("alpha")
+    ax.set_ylabel("beta_hat(alpha)")
+    ax.set_title(f"Anti-concentration threshold curve (n={result['n']})")
+    ax.set_ylim(0.0, 1.05)
+    ax.grid(True, alpha=0.3)
+    ax.legend()
+    fig.tight_layout()
+    fig.savefig(path, dpi=150)
+    plt.close(fig)
+
+
+def _write_anti_concentration_diagnostics_plot(result: dict[str, Any], path: Path) -> None:
+    """Plot the scaled second moment and max probability diagnostics."""
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    labels = ["scaled_second_moment", "max_probability_scaled"]
+    values = [
+        float(result["scaled_second_moment"]),
+        float(result["max_probability_scaled"]),
+    ]
+    colors = ["tab:blue", "tab:orange"]
+
+    fig, ax = plt.subplots(figsize=(6, 4))
+    ax.bar(labels, values, color=colors)
+    ax.axhline(
+        float(result["second_moment_threshold"]),
+        linestyle="--",
+        linewidth=1.5,
+        color="tab:red",
+        label="second_moment_threshold",
+    )
+    ax.set_ylabel("scaled value")
+    ax.set_title(f"Anti-concentration diagnostics (n={result['n']})")
+    ax.grid(True, axis="y", alpha=0.3)
+    ax.legend()
+    fig.tight_layout()
+    fig.savefig(path, dpi=150)
+    plt.close(fig)
 
 
 def _theta_from_cfg(init_cfg: dict[str, Any], m: int, seed: int) -> np.ndarray:
