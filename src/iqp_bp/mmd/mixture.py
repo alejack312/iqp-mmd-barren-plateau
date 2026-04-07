@@ -23,7 +23,8 @@ def dataset_expectation(data: np.ndarray, a: np.ndarray) -> float:
         Estimate of ⟨Z_a⟩_p = (1/N) Σ_x (-1)^{a·x}
     """
     parities = (data @ a) % 2  # shape (N,), values {0,1}
-    return float((1 - 2 * parities).mean())
+    signs = 1.0 - 2.0 * parities.astype(np.float64)
+    return float(signs.mean())
 
 
 def dataset_expectations_batch(data: np.ndarray, a_batch: np.ndarray) -> np.ndarray:
@@ -41,4 +42,5 @@ def dataset_expectations_batch(data: np.ndarray, a_batch: np.ndarray) -> np.ndar
     # Read first: pathlib.Path https://docs.python.org/3/library/pathlib.html#pathlib.Path ;
     # json https://docs.python.org/3/library/json.html
     parities = (data @ a_batch.T) % 2  # (N, B)
-    return (1 - 2 * parities).mean(axis=0)  # (B,)
+    signs = 1.0 - 2.0 * parities.astype(np.float64)
+    return signs.mean(axis=0)  # (B,)

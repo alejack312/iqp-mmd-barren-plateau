@@ -1,8 +1,8 @@
 """IQP hypergraph family generators.
 
 Each function returns a generator matrix G of shape (m, n) with binary
-entries. Row j is the bitmask g_j ∈ {0,1}^n for the j-th IQP generator
-exp(i θ_j X^{g_j}).
+entries. Row j is the bitmask g_j in {0,1}^n for the j-th IQP generator
+exp(i theta_j X^{g_j}).
 
 Glossary:
   - generator matrix: docs/technical/glossary.md#generator-matrix
@@ -24,7 +24,7 @@ def bounded_degree(
 ) -> np.ndarray:
     """k-local bounded-degree hypergraph.
 
-    Each generator g_j has Hamming weight ≤ max_weight.
+    Each generator g_j has Hamming weight <= max_weight.
     Each qubit appears in at most max_degree generators.
 
     Returns:
@@ -51,27 +51,33 @@ def erdos_renyi(
     p_edge: float = 0.1,
     rng: np.random.Generator | None = None,
 ) -> np.ndarray:
-    """Erdős–Rényi hypergraph.
+    """Sparse pairwise Erdős-Rényi family in the SMART regime.
 
-    Each qubit is included in each generator independently with probability p_edge.
+    The config value ``p_edge`` is interpreted as the target average degree
+    constant ``c``. A graph edge is sampled with probability ``p = min(1, c / n)``,
+    which keeps the expected degree bounded as ``n`` grows.
+
+    Each sampled graph edge becomes one weight-2 generator row. The returned
+    matrix therefore has one row per sampled edge and ignores the requested ``m``.
 
     Returns:
-        G: ndarray of shape (m, n), dtype uint8
+        G: ndarray of shape (num_sampled_edges, n), dtype uint8
     """
     if rng is None:
         rng = np.random.default_rng()
-    # TODO: Weeks 3-4 (D4.1) calibrate this family to the SMART sparse
-    # Erdos-Renyi regime with bounded expected degree and comparable m(n) scaling.
-    # See docs/technical/glossary.md#sparse-erdos-renyi-family.
-    # Read first: NetworkX erdos_renyi_graph
-    # https://networkx.org/documentation/stable/reference/generated/networkx.generators.random_graphs.erdos_renyi_graph.html
-    G = rng.random((m, n)) < p_edge
-    # Ensure no all-zero generators
-    empty = G.sum(axis=1) == 0
-    if empty.any():
-        fallback_qubits = rng.integers(0, n, size=empty.sum())
-        G[empty, fallback_qubits] = 1
-    return G.astype(np.uint8)
+
+    p = min(1.0, p_edge / n)
+    sampled_edges: list[tuple[int, int]] = []
+    for i in range(n):
+        for j in range(i + 1, n):
+            if rng.random() < p:
+                sampled_edges.append((i, j))
+
+    G = np.zeros((len(sampled_edges), n), dtype=np.uint8)
+    for row, (i, j) in enumerate(sampled_edges):
+        G[row, i] = 1
+        G[row, j] = 1
+    return G
 
 
 def lattice(
@@ -84,7 +90,7 @@ def lattice(
     """Lattice-local hypergraph.
 
     1D: generators on consecutive qubit windows of size (range_+1).
-    2D: generators on nearest-neighbor qubit patches.
+    2D: exact nearest-neighbor ZZ interactions on a square grid.
 
     Returns:
         G: ndarray of shape (m, n), dtype uint8
@@ -98,19 +104,30 @@ def lattice(
             for d in range(range_ + 1):
                 G[j, (start + d) % n] = 1
     elif dimension == 2:
-        # TODO: Week 1 (D1.1/D1.3) replace the generic 2D patch sampler with the
-        # exact nearest-neighbour ZZ lattice family used in the locked SMART scope.
-        # See docs/technical/glossary.md#zz-lattice-family.
-        # Read first: NetworkX grid_2d_graph
-        # https://networkx.org/documentation/stable/reference/generated/networkx.generators.lattice.grid_2d_graph.html
-        side = int(np.round(np.sqrt(n)))
-        for j in range(m):
-            i0, j0 = rng.integers(0, side), rng.integers(0, side)
-            for di in range(-range_, range_ + 1):
-                for dj in range(-range_, range_ + 1):
-                    qi = ((i0 + di) % side) * side + (j0 + dj) % side
-                    if qi < n:
-                        G[j, qi] = 1
+        # The SMART 2D lattice family is the fixed set of open-boundary
+        # horizontal and vertical nearest-neighbor ZZ pairs on an L x L grid.
+        side = int(np.sqrt(n))
+        if side * side != n:
+            raise ValueError(f"n must be a perfect square for 2D lattice, got {n}")
+        if range_ != 1:
+            raise ValueError(f"range_ must be 1 for 2D lattice, got {range_}")
+        n_edges = 2 * side * (side - 1)
+        G = np.zeros((n_edges, n), dtype=np.uint8)
+        row = 0
+        for i in range(side):
+            for j in range(side):
+                q = i * side + j
+                if j + 1 < side:
+                    G[row, q] = 1
+                    G[row, q + 1] = 1
+                    row += 1
+                if i + 1 < side:
+                    G[row, q] = 1
+                    G[row, q + side] = 1
+                    row += 1
+        return G
+    else:
+        raise ValueError(f"Unsupported lattice dimension {dimension!r}; choose 1 or 2")
     return G
 
 
@@ -184,8 +201,9 @@ def community(
     if rng is None:
         rng = np.random.default_rng()
     block_size = n // n_blocks
-    block_id = np.array([i // block_size if i // block_size < n_blocks else n_blocks - 1
-                         for i in range(n)])
+    block_id = np.array(
+        [i // block_size if i // block_size < n_blocks else n_blocks - 1 for i in range(n)]
+    )
     G = np.zeros((m, n), dtype=np.uint8)
     for j in range(m):
         focus_block = rng.integers(0, n_blocks)
@@ -227,7 +245,7 @@ def symmetric(
 FAMILIES: dict[str, callable] = {
     # Primary study families (supervisor scope, Mar 2026)
     "product_state": product_state,
-    "lattice": lattice,          # use dimension=2, range_=1 for 2D lattice
+    "lattice": lattice,  # use dimension=2, range_=1 for 2D lattice
     "erdos_renyi": erdos_renyi,
     "complete_graph": complete_graph,
     # Legacy / auxiliary families (kept for reference, not in primary sweep)
@@ -250,5 +268,4 @@ def make_hypergraph(
         raise ValueError(f"Unknown family {family!r}. Choose from {list(FAMILIES)}")
     # TODO: Weeks 3-4 (D4.1) enforce the primary four-family sweep and comparable
     # parameter-count policies centrally instead of distributing that logic in runners.
-    # Read first: itertools.product https://docs.python.org/3/library/itertools.html#itertools.product
     return FAMILIES[family](n=n, m=m, rng=rng, **kwargs)

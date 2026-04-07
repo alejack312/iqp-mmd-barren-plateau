@@ -20,21 +20,23 @@ circuit:
                       #   erdos_renyi | complete_graph
                       # legacy (not in primary sweep): bounded_degree | dense |
                       #   community | symmetric
-  n_qubits: list[int] # [required] list of qubit counts to sweep, e.g. [16,24,32,48,64,96]
+  n_qubits: list[int] # [required] list of qubit counts to sweep
+                      # for the exact 2D SMART lattice family, use square-only values: [4,9,16,...]
   n_generators: str   # formula for m given n: "c*n" | "c*n*log(n)" | int literal
                       # default: "n"  (i.e., m = n)
                       # NOTE: product_state always uses m=n; complete_graph always
-                      # uses m=n*(n-1)//2; this field is ignored for those families.
+                      # uses m=n*(n-1)//2; the exact 2D lattice also ignores this field
+                      # because m is fixed by the square-grid edge count 2*L*(L-1).
 
   # Family-specific parameters
   product_state: {}   # no parameters; m=n fixed
 
   lattice:
-    dimension: int    # 1 or 2 (use 2 for 2D lattice study; default: 2)
-    range: int        # interaction range r (default: 1)
+    dimension: int    # 1 or 2 (use 2 for the exact 2D SMART lattice; default: 2)
+    range: int        # interaction range r; SMART 2D lattice requires range=1 exactly
 
   erdos_renyi:
-    p_edge: list[float]  # edge inclusion probability per qubit; sweep values
+    p_edge: list[float]  # target average degree constants c; graph edges use p=min(1, c/n)
 
   complete_graph: {}  # no parameters; m=n*(n-1)//2 fixed
 

@@ -1,12 +1,12 @@
-"""Kernel functions and spectral weight samplers for MMD².
+"""Kernel functions and spectral weight samplers for MMD^2.
 
-For each kernel k : {±1}^n × {±1}^n → R, we provide:
+For each kernel k : {+/-1}^n x {+/-1}^n -> R, we provide:
   - k(x, y): kernel evaluation
-  - spectral_weights(n, **params): weight array w_k(a) for all a ∈ {0,1}^n
+  - spectral_weights(n, **params): weight array w_k(a) for all a in {0,1}^n
   - sample_a(n, num_a_samples, **params): sample Z-word indices ~ P_k
 
-All kernels use ±1 encoding convention: x_i ∈ {±1}.
-For binary x ∈ {0,1}^n, convert via x_pm = 1 - 2*x.
+All kernels use the +/-1 encoding convention: x_i in {+/-1}.
+For binary x in {0,1}^n, convert via x_pm = 1 - 2*x.
 
 Glossary:
   - spectral weight: docs/technical/glossary.md#spectral-weight
@@ -24,24 +24,20 @@ import numpy as np
 # Gaussian
 # ---------------------------------------------------------------------------
 
+def _gaussian_tau(sigma: float) -> float:
+    """Return the locked Gaussian Walsh decay parameter tau = tanh(1 / (4 sigma^2))."""
+    return float(np.tanh(1.0 / (4.0 * sigma**2)))
+
+
 def gaussian_kernel(x: np.ndarray, y: np.ndarray, sigma: float) -> float:
-    """k(x,y) = exp(-H(x,y) / σ²) where H is Hamming distance."""
+    """k(x, y) = exp(-H / (2 sigma^2)) where H is Hamming distance."""
     hamming = np.sum(x != y)
-    return float(np.exp(-hamming / sigma**2))
+    return float(np.exp(-hamming / (2 * sigma**2)))
 
 
 def gaussian_spectral_weights(n: int, sigma: float) -> np.ndarray:
-    """Spectral weights w_G(a; σ) ∝ tanh(1/σ²)^|a| for all a by weight.
-
-    Returns:
-        weights: shape (n+1,) where weights[w] is the weight for all a with |a|=w.
-        (Weights are equal for all a with the same Hamming weight.)
-    """
-    # TODO: Week 1 (D1.1) confirm the exact Gaussian spectral normalization used by
-    # the locked MMD^2 derivation and expose it explicitly for theory/implementation parity.
-    # See docs/technical/glossary.md#locked-mmd2-derivation.
-    # Read first: NumPy Generator https://numpy.org/doc/stable/reference/random/generator.html
-    tau = np.tanh(1.0 / sigma**2)
+    """Spectral weights w_G(a; sigma) proportional to tanh(1 / (4 sigma^2))^|a|."""
+    tau = _gaussian_tau(sigma)
     return tau ** np.arange(n + 1)
 
 
@@ -51,20 +47,14 @@ def gaussian_sample_a(
     sigma: float,
     rng: np.random.Generator | None = None,
 ) -> np.ndarray:
-    """Sample Z-word bitmasks a ~ P_G(a; σ).
+    """Sample Z-word bitmasks a ~ P_G(a; sigma).
 
-    First samples Hamming weight w ~ P(w) ∝ C(n,w) * tau^w,
-    then samples uniform a of that weight.
-
-    See docs/technical/glossary.md#z-word and
-    docs/technical/glossary.md#spectral-weight.
-
-    Returns:
-        a_samples: shape (num_a_samples, n), dtype uint8
+    First sample Hamming weight w ~ P(w) proportional to C(n, w) * tau^w,
+    then sample a uniform mask of that weight.
     """
     if rng is None:
         rng = np.random.default_rng()
-    tau = np.tanh(1.0 / sigma**2)
+    tau = _gaussian_tau(sigma)
     weights = np.arange(n + 1)
     log_probs = weights * np.log(tau + 1e-300) + np.array(
         [_log_binom(n, w) for w in weights]
@@ -86,7 +76,7 @@ def gaussian_sample_a(
 # ---------------------------------------------------------------------------
 
 def laplacian_kernel(x: np.ndarray, y: np.ndarray, sigma: float) -> float:
-    """k(x,y) = exp(-sqrt(H(x,y)) / σ)."""
+    """k(x, y) = exp(-sqrt(H(x, y)) / sigma)."""
     hamming = float(np.sum(x != y))
     return float(np.exp(-np.sqrt(hamming) / sigma))
 
@@ -97,7 +87,7 @@ def laplacian_sample_a(
     sigma: float,
     rng: np.random.Generator | None = None,
 ) -> np.ndarray:
-    """Sample Z-word bitmasks a ~ P_L(a; σ) via Walsh–Hadamard transform."""
+    """Sample Z-word bitmasks a ~ P_L(a; sigma) via Walsh-Hadamard transform."""
     if rng is None:
         rng = np.random.default_rng()
     # TODO: Week 1 (D1.1) keep this as an explicit stub until the Laplacian MMD^2
@@ -118,11 +108,7 @@ def laplacian_sample_a(
 
 
 def _laplacian_spectral_weight(n: int, w: int, sigma: float) -> float:
-    """Approximate spectral weight for Laplacian kernel at Hamming weight w.
-
-    See docs/technical/glossary.md#spectral-weight.
-    """
-    # Via inclusion-exclusion / Krawtchouk expansion (approximate)
+    """Approximate spectral weight for Laplacian kernel at Hamming weight w."""
     total = 0.0
     for h in range(n + 1):
         total += _krawtchouk(w, h, n) * np.exp(-np.sqrt(h) / sigma)
@@ -134,7 +120,7 @@ def _laplacian_spectral_weight(n: int, w: int, sigma: float) -> float:
 # ---------------------------------------------------------------------------
 
 def polynomial_kernel(x: np.ndarray, y: np.ndarray, degree: int, constant: float = 1.0) -> float:
-    """k(x,y) = (x·y/n + c)^d with ±1 encoding."""
+    """k(x, y) = (x.y / n + c)^d with +/-1 encoding."""
     inner = float(np.dot(x, y)) / len(x)
     return float((inner + constant) ** degree)
 
@@ -148,11 +134,10 @@ def polynomial_sample_a(
 ) -> np.ndarray:
     """Sample Z-word bitmasks a ~ P_P(a; d, c).
 
-    Polynomial kernel has support only on |a| ≤ degree.
+    Polynomial kernel has support only on |a| <= degree.
     """
     if rng is None:
         rng = np.random.default_rng()
-    # Weights are nonzero only for |a| ≤ degree
     max_w = min(degree, n)
     log_weights = np.array([
         _log_binom(n, w) + np.log(abs(_poly_coeff(w, degree, constant)) + 1e-300)
@@ -185,16 +170,11 @@ def multi_scale_gaussian_kernel(
     sigmas: list[float],
     weights: list[float] | None = None,
 ) -> float:
-    """k(x,y) = Σ_i w_i * exp(-H(x,y) / σ_i²).
-
-    Args:
-        sigmas: list of bandwidth values σ_i.
-        weights: mixture weights (default: uniform 1/K).
-    """
+    """k(x, y) = sum_i w_i * exp(-H(x, y) / (2 sigma_i^2))."""
     hamming = float(np.sum(x != y))
     w = np.array(weights if weights is not None else [1.0 / len(sigmas)] * len(sigmas))
     w = w / w.sum()
-    return float(sum(wi * np.exp(-hamming / s**2) for wi, s in zip(w, sigmas)))
+    return float(sum(wi * np.exp(-hamming / (2 * s**2)) for wi, s in zip(w, sigmas)))
 
 
 def multi_scale_gaussian_sample_a(
@@ -207,10 +187,7 @@ def multi_scale_gaussian_sample_a(
     """Sample Z-word bitmasks a ~ P_MSG(a; sigmas, weights).
 
     Mixture-of-Gaussians: pick component i ~ Categorical(weights),
-    then sample a from gaussian_sample_a with σ = sigmas[i].
-
-    Returns:
-        a_samples: shape (num_a_samples, n), dtype uint8
+    then sample a from gaussian_sample_a with sigma = sigmas[i].
     """
     if rng is None:
         rng = np.random.default_rng()
@@ -235,7 +212,7 @@ def multi_scale_gaussian_sample_a(
 # ---------------------------------------------------------------------------
 
 def linear_kernel(x: np.ndarray, y: np.ndarray) -> float:
-    """k(x,y) = x·y/n with ±1 encoding."""
+    """k(x, y) = x.y / n with +/-1 encoding."""
     return float(np.dot(x, y)) / len(x)
 
 
@@ -293,7 +270,7 @@ def _log_binom(n: int, k: int) -> float:
 
 
 def _krawtchouk(k: int, x: int, n: int) -> float:
-    """Krawtchouk polynomial K_k(x; n) = Σ_j (-1)^j C(x,j) C(n-x,k-j)."""
+    """Krawtchouk polynomial K_k(x; n) = sum_j (-1)^j C(x,j) C(n-x,k-j)."""
     from math import comb
     total = 0
     for j in range(k + 1):

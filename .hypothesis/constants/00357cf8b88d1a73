@@ -1,0 +1,4 @@
+# file: C:\Users\cuqui\iqp-mmd-barren-plateau\src\iqp_bp\mmd\kernel.py
+# hypothesis_version: 6.151.11
+
+[0.0, 1e-300, 1.0, 'gaussian', 'laplacian', 'linear', 'multi_scale_gaussian', 'polynomial']

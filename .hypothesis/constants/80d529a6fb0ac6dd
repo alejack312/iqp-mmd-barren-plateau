@@ -1,0 +1,4 @@
+# file: C:\Users\cuqui\iqp-mmd-barren-plateau\src\iqp_bp\hypergraph\hypothesis_strategies.py
+# hypothesis_version: 6.151.11
+
+[0.0, 0.01, 0.1, 0.3, 0.5, 0.9, 1.0, 2.0, 10.0, 128, 'G', 'bounded_degree', 'constant', 'data', 'data_family', 'data_kwargs', 'degree', 'family', 'family_kwargs', 'gaussian', 'hypergraph_matrix', 'init_kwargs', 'init_scheme', 'kernel', 'kernel_kwargs', 'laplacian', 'linear', 'multi_scale_gaussian', 'p', 'polynomial', 'product_bernoulli', 'sigma', 'sigmas', 'small_angle', 'std', 'theta', 'uniform', 'weights']

@@ -45,6 +45,7 @@ def run(cfg: dict[str, Any]) -> None:
             m = n
             rng = np.random.default_rng(cfg["experiment"]["seed"])
             G = make_hypergraph(family=family, n=n, m=m, rng=rng)
+            actual_m = G.shape[0]
 
             if export:
                 frg_path = Path("forge/runs") / f"{family}_n{n}.frg"
@@ -55,7 +56,7 @@ def run(cfg: dict[str, Any]) -> None:
             record = {
                 "family": family,
                 "n": n,
-                "m": m,
+                "m": actual_m,
                 "exported": str(frg_path) if export else None,
                 "status": "exported — run Forge manually",
             }

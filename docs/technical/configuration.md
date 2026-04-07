@@ -79,17 +79,30 @@ circuit:
 
 **product_state** is the no-entanglement baseline. G is the n×n identity: single-qubit Z rotations only. If this family shows gradient concentration it would be a red flag — it shouldn't.
 
-**lattice** puts generators on a 1D or 2D grid:
+**lattice** is the locked local SMART family. In the main 2D study it means the exact
+open-boundary square-grid nearest-neighbor ZZ edge set, not a random local patch sampler.
+That implies two practical rules:
+- use square-only `n_qubits` values such as `4, 9, 16, 25, ...`
+- for the exact 2D family, `range: 1` is required and `n_generators` is ignored because
+  the generator count is fixed by the grid as `m = 2L(L-1)` for `n = L^2`
+
+The function still exposes a legacy 1D branch for reference, but the SMART scope uses:
 
 ```yaml
 circuit:
   family: lattice
   lattice:
-    dimension: 2    # 1 or 2
-    range: 1        # range=1 is nearest-neighbor; range=2 adds next-nearest
+    dimension: 2
+    range: 1
 ```
 
-**erdos_renyi** draws random connectivity: each qubit is included in each generator independently with probability `p_edge`. Higher values mean denser interactions.
+**erdos_renyi** is the sparse random-connectivity baseline. It samples an Erdos-Renyi graph on the qubits and uses one weight-2 generator row per sampled edge.
+
+Implemented SMART contract update:
+- `erdos_renyi` is now pairwise: one weight-2 generator row per sampled graph edge
+- `p_edge` is interpreted as the target average degree constant `c`
+- graph-edge probability is `p = min(1, c / n)`
+- `m` is intrinsic for this family and equals the number of sampled graph edges
 
 ```yaml
 circuit:
@@ -107,7 +120,14 @@ circuit:
   family: [product_state, lattice, erdos_renyi, complete_graph]
 ```
 
-The number of generators m comes from `n_generators`:
+The number of generators `m` usually comes from `n_generators`, except for exact families
+whose structure determines it directly:
+- `product_state`: `m = n`
+- `complete_graph`: `m = n(n-1)/2`
+- exact 2D `lattice`: `m = 2L(L-1)` for `n = L^2`
+- sparse `erdos_renyi`: `m` is intrinsic and equals the number of sampled graph edges
+
+For the remaining families, `m` comes from `n_generators`:
 
 ```yaml
 circuit:
@@ -143,7 +163,7 @@ kernel:
   bandwidth: [0.1, 0.5, 1.0, 2.0, 5.0]
 ```
 
-**gaussian** uses `k(x, y) = exp(-H(x, y) / σ²)` where H is Hamming distance. Small σ concentrates weight on low-Hamming-weight observables (local structure). Large σ spreads weight toward higher-weight terms (global correlations). This is the primary kernel in the scaling sweep.
+**gaussian** uses `k(x, y) = exp(-H(x, y) / (2σ²))` where H is Hamming distance. Small σ keeps more mass on higher-weight observables, while large σ suppresses high-weight modes and concentrates the loss on low-order structure. This is the primary kernel in the scaling sweep.
 
 **laplacian** uses `k(x, y) = exp(-√H(x, y) / σ)`. It has heavier tails than the Gaussian — more sensitive to distant bitstrings. The same bandwidth list applies.
 
@@ -208,7 +228,15 @@ init:
     dataset: product_bernoulli
 ```
 
-This scheme is not yet implemented — the runner raises `NotImplementedError`. It is planned for a later phase.
+The current implementation uses the empirical parity expectation over each generator support as
+a warm start:
+
+```text
+θ_j = scale · E_x[(-1)^(x·g_j)]
+```
+
+with `scale = 0.1` by default. This keeps the initializer data-aware and generator-aware while
+staying compatible with the current binary-data path.
 
 To sweep multiple schemes:
 

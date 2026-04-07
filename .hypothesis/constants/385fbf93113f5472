@@ -1,0 +1,4 @@
+# file: C:\Users\cuqui\AppData\Roaming\Python\Python313\site-packages\chardet\codingstatemachine.py
+# hypothesis_version: 6.151.11
+
+['char_len_table', 'class_factor', 'class_table', 'language', 'name', 'state_table']

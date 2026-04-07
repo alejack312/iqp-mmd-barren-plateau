@@ -1,4 +1,4 @@
-# configs/base.yaml — Default base configuration
+# configs/base.yaml - Default base configuration
 # All experiment configs should inherit from this via YAML merge keys or
 # explicit override. Fields here are the project-wide defaults.
 
@@ -11,14 +11,14 @@ experiment:
 
 circuit:
   family: product_state   # default; primary families: product_state | lattice | erdos_renyi | complete_graph
-  n_qubits: [16, 24, 32, 48, 64, 96]
-  n_generators: "n"       # ignored for product_state and complete_graph
+  n_qubits: [4, 9, 16, 25, 36, 49, 64, 81, 100, 121, 144, 169, 196, 225, 256, 289, 324, 361, 400, 441, 484, 529, 576, 625, 676, 729, 784, 841, 900, 961, 1024]
+  n_generators: "n"       # ignored for product_state, exact 2D lattice, sparse erdos_renyi, and complete_graph
   # Primary family parameters
   lattice:
-    dimension: 2          # 2D lattice (nearest-neighbour on square grid)
+    dimension: 2          # 2D lattice (nearest-neighbor on square grid)
     range: 1
   erdos_renyi:
-    p_edge: [0.1]         # sparse ER (p~1/n gives Θ(1) expected degree)
+    p_edge: [2.0]         # target average degree constant c; graph edges use p=min(1, c/n)
   # Legacy family parameters (kept for reference)
   bounded_degree:
     max_weight: 3
@@ -33,11 +33,11 @@ circuit:
     parity: even
 
 kernel:
-  type: gaussian            # primary; study order: gaussian → laplacian → multi_scale_gaussian
-  bandwidth: [0.1, 0.5, 1.0, 2.0, 5.0]  # σ sweep (Phase 1 primary axis)
+  type: gaussian            # primary; study order: gaussian -> laplacian -> multi_scale_gaussian
+  bandwidth: [0.1, 0.5, 1.0, 2.0, 5.0]  # sigma sweep (Phase 1 primary axis)
   multi_scale_gaussian:
     sigmas: [0.5, 1.0, 2.0]  # default 3-component mixture
-    weights: null             # null → uniform (1/K each component)
+    weights: null             # null -> uniform (1/K each component)
 
 init:
   scheme: uniform
@@ -78,13 +78,3 @@ qiskit:
 
 forge:
   max_n: 12
-  target_property: overlap_threshold
-  timeout_sec: 60
-
-output:
-  format: jsonl
-  save_raw: false
-  figures:
-    enabled: true
-    format: pdf
-    dpi: 150

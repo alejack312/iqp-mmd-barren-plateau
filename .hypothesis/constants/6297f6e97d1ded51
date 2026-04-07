@@ -1,0 +1,4 @@
+# file: C:\Users\CodexSandboxOffline\.codex\.sandbox\cwd\10120c1fccf7f706\src\iqp_bp\hypergraph\families.py
+# hypothesis_version: 6.151.11
+
+[0.05, 0.1, 0.5, 0.8, 1.0, 'bounded_degree', 'community', 'complete_graph', 'dense', 'erdos_renyi', 'even', 'lattice', 'product_state', 'symmetric']

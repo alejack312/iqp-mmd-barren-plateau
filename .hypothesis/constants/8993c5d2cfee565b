@@ -1,0 +1,4 @@
+# file: C:\Users\CodexSandboxOffline\.codex\.sandbox\cwd\10120c1fccf7f706\src\iqp_bp\hypergraph\hypothesis_strategies.py
+# hypothesis_version: 6.151.11
+
+[-4.0, 0.0, 0.01, 0.1, 0.3, 0.5, 0.9, 1.0, 2.0, 4.0, 10.0, 128, 'G', 'bounded_degree', 'complete_graph', 'constant', 'data', 'data_dependent', 'data_family', 'data_kwargs', 'degree', 'dimension', 'erdos_renyi', 'family', 'family_kwargs', 'gaussian', 'hypergraph_matrix', 'init_kwargs', 'init_scheme', 'kernel', 'kernel_kwargs', 'laplacian', 'lattice', 'linear', 'm', 'multi_scale_gaussian', 'n', 'p', 'p_edge', 'polynomial', 'product_bernoulli', 'product_state', 'range_', 'sigma', 'sigmas', 'small_angle', 'std', 'theta', 'uniform', 'weights']

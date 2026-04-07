@@ -1,0 +1,4 @@
+# file: C:\Users\cuqui\iqp-mmd-barren-plateau\src\iqp_bp\mmd\loss.py
+# hypothesis_version: 6.151.11
+
+[512, 1024, 'gaussian']

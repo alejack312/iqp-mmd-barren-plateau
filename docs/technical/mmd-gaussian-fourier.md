@@ -96,32 +96,58 @@ distributions is equivalent to matching the distributions exactly.
 The Gaussian kernel on binary strings (as used in this codebase) is:
 
 $$
-k_\sigma(x, y) = \exp\!\left(-\frac{H(x, y)}{\sigma^2}\right)
+k_\sigma(x, y) = \exp\!\left(-\frac{H(x, y)}{2\sigma^2}\right)
 $$
 
 where $H(x,y) = \#\{i : x_i \neq y_i\}$ is the Hamming distance. The key is to factor this over
 the individual bits. Each bit contributes a factor:
 
 $$
-k^{(i)}_\sigma(x_i, y_i) = \exp\!\left(-\frac{\lvert x_i - y_i\rvert}{\sigma^2}\right) = \begin{cases} 1 & x_i = y_i \\ e^{-1/\sigma^2} & x_i \neq y_i \end{cases}
+k^{(i)}_\sigma(x_i, y_i) = \exp\!\left(-\frac{\lvert x_i - y_i\rvert}{2\sigma^2}\right) = \begin{cases} 1 & x_i = y_i \\ e^{-1/(2\sigma^2)} & x_i \neq y_i \end{cases}
 $$
 
 Switch to ±1 encoding via $s_i = 1 - 2x_i$, $t_i = 1 - 2y_i$. Then $s_i t_i = +1$ when $x_i = y_i$
 and $-1$ when $x_i \neq y_i$, so:
 
 $$
-k^{(i)}_\sigma = \frac{1 + e^{-1/\sigma^2}}{2} + s_i t_i \cdot \frac{1 - e^{-1/\sigma^2}}{2}
+k^{(i)}_\sigma = \frac{1 + e^{-1/(2\sigma^2)}}{2} + s_i t_i \cdot \frac{1 - e^{-1/(2\sigma^2)}}{2}
 $$
 
 Write this as $A_\sigma(1 + \tau\, s_i t_i)$ where:
 
 $$
-A_\sigma = \frac{1 + e^{-1/\sigma^2}}{2}, \qquad \tau = \frac{1 - e^{-1/\sigma^2}}{1 + e^{-1/\sigma^2}} = \tanh\!\left(\frac{1}{2\sigma^2}\right)
+A_\sigma = \frac{1 + e^{-1/(2\sigma^2)}}{2}, \qquad \tau = \frac{1 - e^{-1/(2\sigma^2)}}{1 + e^{-1/(2\sigma^2)}} = \tanh\!\left(\frac{1}{4\sigma^2}\right)
 $$
 
 So $\tau \in (0, 1)$ is the key parameter — it controls how fast the Fourier weights decay with
-mode order. (The code uses the closely related $\tau' = \tanh(1/\sigma^2)$, which differs by
-a reparametrization of $\sigma$ but has the same structural role.)
+mode order.
+
+## Normalization lock
+
+The normalization is now locked across code and docs. The implementation uses the paper-style
+Gaussian kernel
+
+$$
+k_\sigma(x, y) = \exp\!\left(-\frac{H(x, y)}{2\sigma^2}\right)
+$$
+
+with Bernoulli spectral-mask parameter
+
+$$
+p_\sigma = \frac{1 - e^{-1/(2\sigma^2)}}{2}
+$$
+
+and Walsh decay parameter
+
+$$
+\tau_\sigma = \frac{p_\sigma}{1 - p_\sigma}
+= \frac{1 - e^{-1/(2\sigma^2)}}{1 + e^{-1/(2\sigma^2)}}
+= \tanh\!\left(\frac{1}{4\sigma^2}\right).
+$$
+
+This is the convention used by `gaussian_kernel`, `gaussian_spectral_weights`,
+`gaussian_sample_a`, and `multi_scale_gaussian_kernel` in
+[kernel.py](../../src/iqp_bp/mmd/kernel.py).
 
 Multiplying over all n bits:
 
@@ -290,7 +316,7 @@ circuit family, training hits a floor regardless of optimization quality.
 
 ## What bandwidth does to the loss
 
-$\tau = \tanh(1/(2\sigma^2))$ decreases from 1 to 0 as $\sigma$ increases. This directly controls
+$\tau = \tanh(1/(4\sigma^2))$ decreases from 1 to 0 as $\sigma$ increases. This directly controls
 which Fourier modes the loss cares about:
 
 **Small $\sigma$ (narrow kernel, $\tau \approx 1$):**
@@ -301,7 +327,7 @@ is dominated by whatever the circuit can most easily tune, and high-body terms
 Per [Rudolph et al. 2023, arXiv:2305.02881], this regime can produce untrainable losses
 for generic circuit families because the effective observable is global.
 
-**Large $\sigma$ (broad kernel, $\tau \approx 1/(2\sigma^2) \ll 1$):**
+**Large $\sigma$ (broad kernel, $\tau \approx 1/(4\sigma^2) \ll 1$):**
 Only low-order modes ($\lvert S\rvert = 1, 2, \ldots$) contribute appreciably. The loss is
 **low-bodied**: it measures discrepancy in marginals and low-order correlations. Gradient
 variance scales better because the effective observable is local. The same paper shows that

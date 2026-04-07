@@ -20,7 +20,7 @@ Given N binary strings drawn from p, the goal is to find θ minimizing:
 MMD²_σ(p, q_θ) = C · Σ_{S ⊆ [n]} τ^|S| (⟨Z_S⟩_p − ⟨Z_S⟩_{q_θ})²
 ```
 
-This is the weighted ℓ² distance between the Fourier spectra of p and q_θ. The Gaussian kernel with bandwidth σ gives each mode S a weight τ^|S| = tanh(1/σ²)^|S|, which decays exponentially with Hamming weight. Low-order correlations (single-qubit marginals, pairwise correlations) dominate the loss; high-order terms contribute very little unless σ is small. See `docs/technical/mmd-gaussian-fourier.md` for why this factorization falls out of the kernel structure.
+This is the weighted ℓ² distance between the Fourier spectra of p and q_θ. The Gaussian kernel with bandwidth σ gives each mode S a weight τ^|S| = tanh(1/(4σ²))^|S|, which decays exponentially with Hamming weight. Low-order correlations (single-qubit marginals, pairwise correlations) dominate the loss when σ is large; smaller σ keeps more mass on higher-order terms. See `docs/technical/mmd-gaussian-fourier.md` for why this factorization falls out of the kernel structure.
 
 In practice, the training loop estimates this with Monte Carlo:
 1. Sample K Z-word masks a from the kernel's spectral distribution P_σ
@@ -82,4 +82,13 @@ The effect: instead of starting at θ = 0 (all Fourier modes = 1, maximum mismat
 
 The theoretical motivation comes from the warm start literature (arXiv:2502.07889, Mhiri et al.), which shows that perturbations around favorable starting points can avoid exponential gradient suppression even when random initialization produces a barren plateau. Whether a data-dependent warm start constitutes a "favorable starting point" for IQP circuits, and for which circuit families this holds, is one of the questions the experiments aim to answer.
 
-**Current status:** the config key `init.scheme: data_dependent` is reserved. The runner raises `NotImplementedError` until the implementation is written. The formula above describes the intended behavior.
+**Current status:** the runner now uses a minimal data-aware initializer based on the empirical
+parity expectation of each generator support:
+
+```
+θ_j = scale · E_x[(-1)^(x·g_j)]
+```
+
+with default `scale = 0.1`. This is a practical covariance-informed warm start over the existing
+binary-data path, but it is still lighter-weight than the fuller structured initializer sketched
+above.

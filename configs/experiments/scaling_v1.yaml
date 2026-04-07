@@ -1,24 +1,24 @@
 # configs/experiments/scaling_v1.yaml
-# Week 3-4: Scaling experiments v1 — classical exact regime (Phase 1)
-# Phase 1: Gaussian kernel × 4 connectivity families × 3 inits × 6 n-values × 50 seeds
+# Week 3-4: Scaling experiments v1 - classical exact regime (Phase 1)
+# Phase 1: Gaussian kernel x 4 connectivity families x 3 inits x 6 n-values x 50 seeds
 # Phase 2 (scaling_v2.yaml): add Laplacian + multi_scale_gaussian
 
 experiment:
   name: scaling_v1
-  description: "Scaling v1 (Phase 1): gradient variance vs n, Gaussian kernel × all 4 connectivity families"
+  description: "Scaling v1 (Phase 1): gradient variance vs n, Gaussian kernel x all 4 connectivity families"
   seed: 42
   output_dir: results/scaling_v1/
   log_level: INFO
 
 circuit:
   family: [product_state, lattice, erdos_renyi, complete_graph]  # 4 primary families
-  n_qubits: [16, 24, 32, 48, 64, 96]
-  n_generators: "n"   # ignored for product_state and complete_graph
+  n_qubits: [4, 9, 16, 25, 36, 49, 64, 81, 100, 121, 144, 169, 196, 225, 256, 289, 324, 361, 400, 441, 484, 529, 576, 625, 676, 729, 784, 841, 900, 961, 1024]
+  n_generators: "n"   # ignored for product_state, exact 2D lattice, sparse erdos_renyi, and complete_graph
   lattice:
-    dimension: 2      # 2D nearest-neighbour lattice
+    dimension: 2      # 2D nearest-neighbor lattice
     range: 1
   erdos_renyi:
-    p_edge: [0.1]     # sparse ER
+    p_edge: [2.0, 4.0]     # target average degree constants
 
 kernel:
   type: [gaussian]    # Phase 1: Gaussian only; bandwidth is the primary sweep axis
@@ -41,7 +41,7 @@ dataset:
 estimation:
   num_a_samples: 512
   num_z_samples: 1024
-  num_seeds: 50          # ≥50 for v1; increase to 100 in v2
+  num_seeds: 50          # >=50 for v1; increase to 100 in v2
   use_jax: true
   batch_size: 10
 

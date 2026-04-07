@@ -1,31 +1,31 @@
 # Code architecture
 
-The codebase is organized as a Python package at `src/iqp_bp/`. Here's the full layout and how the pieces fit together.
+The code lives under `src/iqp_bp/`. This note is the map. If you want the reasoning behind the recent SMART-family, Gaussian-kernel, and Hypothesis changes, read [implementation-choices.md](./implementation-choices.md) next.
 
 ## Package layout
 
-```
+```text
 src/iqp_bp/
-├── config.py                       # YAML loading and config merging
-├── cli.py                          # Entry point: three subcommands
-├── rng.py                          # Seeding utilities
-├── hypergraph/
-│   ├── families.py                 # G matrix generators
-│   └── hypothesis_strategies.py   # Property-based test strategies
-├── iqp/
-│   ├── model.py                    # IQPModel wrapper
-│   └── expectation.py              # Classical ⟨Z_a⟩ formula
-├── mmd/
-│   ├── kernel.py                   # Z-word samplers per kernel
-│   ├── loss.py                     # MMD² estimator
-│   ├── mixture.py                  # Dataset parity expectations
-│   └── gradients.py                # Analytical gradients + variance estimation
-├── qiskit/
-│   └── circuit_builder.py          # G matrix → Qiskit QuantumCircuit
-└── experiments/
-    ├── run_scaling.py              # Main scaling sweep
-    ├── run_qiskit.py               # Qiskit validation
-    └── run_forge.py                # Forge structural modeling
+|-- config.py                       # YAML loading and config merging
+|-- cli.py                          # Entry point: three subcommands
+|-- rng.py                          # Seeding utilities
+|-- hypergraph/
+|   |-- families.py                 # G matrix generators
+|   `-- hypothesis_strategies.py    # Property-based test strategies
+|-- iqp/
+|   |-- model.py                    # IQPModel wrapper
+|   `-- expectation.py              # Classical <Z_a> formula
+|-- mmd/
+|   |-- kernel.py                   # Kernel helpers and Z-word samplers
+|   |-- loss.py                     # MMD^2 estimator
+|   |-- mixture.py                  # Dataset parity expectations
+|   `-- gradients.py                # Analytical gradients + variance estimation
+|-- qiskit/
+|   `-- circuit_builder.py          # G matrix -> Qiskit QuantumCircuit
+`-- experiments/
+    |-- run_scaling.py              # Main scaling sweep
+    |-- run_qiskit.py               # Qiskit validation
+    `-- run_forge.py                # Forge structural modeling
 ```
 
 ## How a run works
@@ -36,57 +36,64 @@ Everything starts from a config file. The CLI loads it, merges it with `configs/
 python -m iqp_bp.cli run-scaling configs/experiments/scaling_v1.yaml
 ```
 
-Inside `run_scaling.py`, the computation is a nested loop over (family × kernel × init × n). For each combination:
+Inside `run_scaling.py`, the computation is a nested loop over `(family, kernel, init, n)`. For each combination:
 
 1. `config.py:load_config()` deep-merges the experiment YAML over `configs/base.yaml`.
-2. `hypergraph/families.py:make_hypergraph(family, n, m)` builds the binary generator matrix G of shape (m, n).
-3. A dataset of N binary strings is generated on-the-fly (no file I/O).
-4. `_make_theta(init_scheme, m, init_cfg, seed)` draws m parameter values. This repeats `num_seeds` times to build the θ ensemble.
-5. `mmd/gradients.py:estimate_gradient_variance(G, data, param_idx, theta_seeds, ...)` computes variance over the ensemble.
+2. `hypergraph/families.py:make_hypergraph(family, n, m)` builds the binary generator matrix `G`.
+3. A dataset of binary strings is generated on the fly.
+4. `_make_theta(...)` builds `theta` for the chosen init scheme.
+5. `mmd/gradients.py:estimate_gradient_variance(...)` computes variance over the `theta` ensemble.
 6. Each gradient evaluation calls `mmd/kernel.py:sample_a(...)` for Z-word masks, `mmd/mixture.py:dataset_expectations_batch(...)` for the data side, and `iqp/expectation.py:iqp_expectation(...)` for the model side.
 7. Results are written as JSONL records to `results/`.
 
 ## The G matrix
 
-Everything interesting reduces to two operations on G:
+Most of the project reduces to two cheap binary operations on `G`:
 
 ```python
 (G @ a) % 2   # shape (m,): which generators have odd overlap with Z-word a
 (G @ z) % 2   # shape (m,): which generators have odd overlap with random bitstring z
 ```
 
-Cheap binary arithmetic, independent of n and m scale. The entire cosine formula for ⟨Z_a⟩_{q_θ} is built from these two dot-products.
+Those two overlap patterns drive the cosine formula for `<Z_a>_{q_theta}` and therefore the MMD estimator and its gradients.
 
 ## Modules
 
-**`config.py`** — loads YAML, deep-merges over defaults, returns a plain Python dict. The schema lives at `configs/schema.yaml` and documents every field.
+**`config.py`** loads YAML, deep-merges over defaults, and returns a plain Python dict. The schema lives at `configs/schema.yaml`.
 
-**`hypergraph/families.py`** — four primary G matrix generators (`product_state`, `lattice`, `erdos_renyi`, `complete_graph`) plus four legacy ones. The dispatcher is `make_hypergraph(family, n, m, **kwargs)`. New families get registered in the `FAMILIES` dict — the runner picks them up automatically.
+**`hypergraph/families.py`** contains the primary SMART families (`product_state`, `lattice`, `erdos_renyi`, `complete_graph`) plus older legacy families. The dispatcher is `make_hypergraph(family, n, m, **kwargs)`. Some families determine their own row count, so downstream code should use `G.shape[0]` instead of assuming the requested `m` survived unchanged.
 
-**`iqp/expectation.py`** — two functions. `iqp_expectation(theta, G, a, num_z_samples)` runs the Monte Carlo cosine formula and returns a (mean, stderr) tuple. `iqp_expectation_exact(theta, G, a)` does the full 2^n sum for validation, but only works up to n ≈ 20. Both delegate the phase computation to `iqp_phase(theta, G, z, a)`.
+**`iqp/expectation.py`** has the Monte Carlo and exact small-`n` paths for `<Z_a>_{q_theta}`. `iqp_expectation(...)` returns `(mean, stderr)`. `iqp_expectation_exact(...)` enumerates all bitstrings and is only practical for small systems.
 
-**`mmd/kernel.py`** — Z-word samplers, one per kernel type. The public interface is `sample_a(kernel, n, B, **kernel_params)`. Note that this module does NOT evaluate k(x, y) directly — it only samples the Z-word masks needed for the Monte Carlo estimator of MMD². The connection is in `docs/technical/mmd-gaussian-fourier.md`.
+**`mmd/kernel.py`** does two jobs. It exposes direct kernel evaluators such as `gaussian_kernel(...)` and `multi_scale_gaussian_kernel(...)`, and it exposes the Z-word samplers used by the Monte Carlo MMD path through `sample_a(...)`. Keeping both in one module makes it easier to keep the documented Gaussian convention, the direct kernel formula, and the sampling path in sync.
 
-**`mmd/mixture.py`** — computes ⟨Z_a⟩_p from dataset samples. `dataset_expectations_batch(data, a_batch)` handles a whole batch of masks in one vectorized pass via parity arithmetic.
+**`mmd/mixture.py`** computes `<Z_a>_p` from dataset samples. `dataset_expectations_batch(data, a_batch)` is the vectorized data-side path.
 
-**`mmd/gradients.py`** — the outer loop spends most of its time here. `grad_mmd2_analytic(theta, G, data, param_idx, ...)` computes the analytical gradient of MMD² for one parameter. `estimate_gradient_variance(G, data, param_idx, theta_seeds, ...)` wraps it to estimate variance over the θ ensemble.
+**`mmd/loss.py`** estimates `MMD^2(p, q_theta)` by sampling Z-words from the kernel-induced distribution, then comparing data-side and model-side expectations.
 
-**`qiskit/circuit_builder.py`** — takes a G matrix and builds a Qiskit `QuantumCircuit` with H layers and parameterized MultiRZ gates. Only used by `run_qiskit.py` for validation against the classical formula.
+**`mmd/gradients.py`** contains the analytic gradient estimator and the outer variance summary. `grad_mmd2_analytic(...)` computes one parameter gradient. `estimate_gradient_variance(...)` wraps that over a `theta` ensemble.
 
-**`rng.py`** — `make_rng(seed)` returns a NumPy Generator. `split_seeds(base_seed, n)` derives n independent child seeds deterministically from a single base, so each (family, kernel, init, n) combination gets reproducible but independent randomness.
+**`qiskit/circuit_builder.py`** maps a binary generator matrix to a Qiskit circuit. It is only used in the Qiskit validation path.
+
+**`rng.py`** centralizes seeded NumPy generators and deterministic seed splitting.
 
 ## The three runners
 
-**`run_scaling.py`** is the main experiment. It sweeps the full grid and writes one JSONL record per (family, kernel, init, n, param_idx) with mean, variance, std, and median of the gradient.
+**`run_scaling.py`** is the main experiment runner. It sweeps the configured grid and writes one JSONL record per `(family, kernel, init, n, param_idx)`.
 
-**`run_qiskit.py`** validates the classical formula against Qiskit circuit simulation on small circuits (n ≤ 20 or so). It compares exact classical, statevector, shot-based, and noisy results. Run this first when debugging — if classical and statevector disagree, something is wrong in the expectation formula before you trust any large-n results.
+**`run_qiskit.py`** is the small-system cross-check runner. It compares the classical formula against Qiskit statevector, shot-based, and noisy estimates.
 
-**`run_forge.py`** takes small G matrices (n ≤ 12) and runs structural modeling via Forge to find minimal hypergraph patterns that induce gradient concentration.
+**`run_forge.py`** exports or searches small structural instances for Forge-based analysis.
 
 ## Testing
 
-`hypergraph/hypothesis_strategies.py` provides Hypothesis strategies for property-based tests:
-- `hypergraph_matrix(n_min, n_max, m_min, m_max)` — random binary G matrices with no all-zero rows
-- `iqp_parameters(n_params, scheme, std)` — θ vectors under uniform or small-angle init
+`hypergraph/hypothesis_strategies.py` provides both generic and SMART-scoped strategies. The current validation layer uses SMART-only family sampling through `smart_family_instance()` and `mmd_instance()`, so Hypothesis exercises the exact 2D lattice, sparse pairwise Erdos-Renyi, product-state, and complete-graph families rather than arbitrary placeholder matrices.
 
-Tests check mathematical invariants — that expectation values stay in [−1, 1], that the gradient formula is consistent with finite differences, that the cosine formula matches the exact formula for small n — rather than specific numerical outputs. This makes them resilient to implementation changes.
+The test suite focuses on invariants, not frozen numeric outputs. That includes:
+- expectation values staying in `[-1, 1]`
+- exact lattice edge structure
+- pairwise ER structure with no duplicate edges
+- `theta.shape == G.shape[0]`
+- consistency between the Monte Carlo cosine path and the exact path on small `n`
+
+That style of testing is deliberate. The implementation still moves, but the mathematics should not.

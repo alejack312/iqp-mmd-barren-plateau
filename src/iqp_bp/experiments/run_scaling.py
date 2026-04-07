@@ -15,6 +15,7 @@ import numpy as np
 
 from iqp_bp.hypergraph.families import make_hypergraph
 from iqp_bp.mmd.gradients import estimate_gradient_variance
+from iqp_bp.mmd.mixture import dataset_expectations_batch
 from iqp_bp.rng import split_seeds
 
 log = logging.getLogger(__name__)
@@ -56,17 +57,18 @@ def run(cfg: dict[str, Any]) -> None:
 
                         rng_circuit = np.random.default_rng(circuit_seed)
                         G = _make_G(family, n, m, cfg["circuit"], rng_circuit)
+                        actual_m = G.shape[0]
 
                         data = _make_data(dataset_cfg, n, base_seed)
 
                         theta_list = [
-                            _make_theta(init_scheme, m, cfg["init"], seed)
+                            _make_theta(init_scheme, G, data, cfg["init"], seed)
                             for seed in theta_seeds_raw[:num_seeds]
                         ]
 
                         kernel_params = _get_kernel_params(kernel, n, cfg["kernel"])
 
-                        for param_idx in range(min(5, m)):  # sample 5 params per setting
+                        for param_idx in range(min(5, actual_m)):  # sample 5 params per setting
                             rng_est = np.random.default_rng(base_seed + param_idx)
                             stats = estimate_gradient_variance(
                                 G=G, data=data, param_idx=param_idx,
@@ -79,7 +81,7 @@ def run(cfg: dict[str, Any]) -> None:
                                 "kernel": kernel,
                                 "init": init_scheme,
                                 "n": n,
-                                "m": m,
+                                "m": actual_m,
                                 "param_idx": param_idx,
                                 **stats,
                                 **kernel_params,
@@ -139,7 +141,8 @@ def _make_data(dataset_cfg, n, seed):
     raise NotImplementedError(f"Dataset type {dtype!r} not yet implemented")
 
 
-def _make_theta(scheme, m, init_cfg, seed):
+def _make_theta(scheme, G, data, init_cfg, seed):
+    m = G.shape[0]
     rng = np.random.default_rng(seed)
     if scheme == "uniform":
         lo = init_cfg.get("uniform", {}).get("low", -np.pi)
@@ -150,11 +153,9 @@ def _make_theta(scheme, m, init_cfg, seed):
         s = std[0] if isinstance(std, list) else std
         return rng.normal(0, s, size=m)
     elif scheme == "data_dependent":
-        # TODO: Weeks 3-4 (D4.1) replace this stub with the covariance-informed
-        # data-dependent initializer required by the SMART comparison study.
-        # Read first: JAX random https://docs.jax.dev/en/latest/jax.random.html ;
-        # NumPy Generator https://numpy.org/doc/stable/reference/random/generator.html
-        return rng.normal(0, 0.01, size=m)  # stub
+        dd_cfg = init_cfg.get("data_dependent", {})
+        scale = dd_cfg.get("scale", 0.1)
+        return scale * np.asarray(dataset_expectations_batch(data, G), dtype=np.float64)
     raise ValueError(f"Unknown init scheme {scheme!r}")
 
 

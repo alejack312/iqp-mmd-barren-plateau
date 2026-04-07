@@ -30,11 +30,11 @@ plus the associated sampling distribution over Z-word masks `S`.
 Why this matters:
 - theory needs one unambiguous formula for proofs and scaling arguments
 - implementation needs one unambiguous formula for `sample_a()`, kernel weights, and estimators
-- comments like "confirm the exact Gaussian spectral normalization" mean some constants or
-  parameterizations are not fully pinned to that reference form yet
+- comments like "confirm the exact Gaussian spectral normalization" refer to the work that locked
+  the Gaussian kernel, Walsh decay, and sampling path to one explicit convention
 
-At the moment, the project has the structure of this derivation documented, but some exact
-normalization details are still marked TODO in code.
+At the moment, the Gaussian normalization is locked in code and docs; remaining derivation work is
+about other kernels or higher-level validation tasks, not about the Gaussian convention itself.
 
 ## Theory/implementation parity
 
@@ -121,20 +121,30 @@ So when you see "replace generic 2D patch sampler with the exact nearest-neighbo
 family," it means the code's current local-family approximation should be tightened to the
 pairwise lattice used by the locked study design.
 
+In the implemented SMART contract, that means:
+- `n` must be a perfect square, so qubits can be laid out as an `L x L` grid
+- only open-boundary horizontal and vertical nearest-neighbor pairs are included
+- each generator row has Hamming weight 2
+- the row count is fixed as `m = 2L(L-1)`, so caller-provided `m` is ignored for this family
+
 <a id="sparse-erdos-renyi-family"></a>
 ## Sparse Erdos-Renyi family
 
-The **sparse Erdos-Renyi family** is the random-connectivity baseline. Each candidate qubit is
-included in each generator independently with some small probability, so the resulting interaction
-pattern is irregular rather than geometric.
+The **sparse Erdos-Renyi family** is the random-connectivity baseline. In the
+SMART contract it is a pairwise graph family: sample an undirected
+Erdos-Renyi graph on the qubits, then use one weight-2 generator row per
+sampled edge.
 
 Why "sparse" matters:
 - plain Erdos-Renyi can become too dense as `n` grows
-- the study usually wants bounded or slowly growing expected degree, so random connectivity stays
+- the study wants bounded expected degree, so random connectivity stays
   meaningfully comparable to the local and dense baselines
 
-In code, this appears as `erdos_renyi`; comments noting future calibration mean the current
-sampler still needs to be tuned to the exact sparse regime intended by the SMART spec.
+In the implemented SMART regime:
+- `p_edge` is interpreted as the target average degree constant `c`
+- graph-edge probability is `p = min(1, c / n)`
+- every generator row has Hamming weight 2
+- the row count is intrinsic and equals the number of sampled graph edges
 
 ## Complete-graph family
 
@@ -334,11 +344,18 @@ The **Gaussian spectral normalization** is the exact constant-and-parameter conv
 writing the Gaussian kernel in Walsh/Fourier form. This includes things like:
 - the global prefactor `C`
 - the decay parameter `tau`
-- whether `tau` is written as `tanh(1/(2 sigma^2))`, `tanh(1/sigma^2)`, or an equivalent
+- whether `tau` is written as `tanh(1/(4 sigma^2))`, `tanh(1/(2 sigma^2))`, or an equivalent
   reparameterization
 
 This term matters because two formulas can have the same qualitative decay in `|S|` while still
 disagreeing on the exact estimator or on how `sigma` maps between theory and code.
+
+Current repo note:
+- the locked implementation now uses the paper convention explicitly:
+  `k(x,y) = exp(-H(x,y)/(2 sigma^2))`
+- the Gaussian Walsh decay is `tau = tanh(1/(4 sigma^2))`
+- Gaussian kernel evaluation, spectral weights, and `sample_a()` now all use the same `sigma`
+  meaning
 
 ## Bandwidth `sigma`
 

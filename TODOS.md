@@ -3,8 +3,8 @@
 Dependency-aware execution list derived from `docs/SMART-spec.md` and the `TODO:` markers in `src/iqp_bp`.
 
 Audit status as of 2026-03-29:
-- No TODOs are fully complete yet.
-- Many TODOs have partial scaffolding already present in the codebase.
+- Several foundation and validation TODOs are now complete.
+- Many remaining TODOs still have partial scaffolding already present in the codebase.
 
 Legend:
 - `[x]` complete
@@ -38,16 +38,16 @@ Implementation docs index:
 
 ### Foundation and Theory
 
-- `[ ] T1` [Week 1] [Confirm the exact Gaussian spectral normalization used by the locked MMD^2 derivation](src/iqp_bp/mmd/kernel.py#L34)
-  Current state: Gaussian weights and sampling are implemented, but the derivation-to-code normalization has not been explicitly locked down. See [locked MMD^2 derivation](docs/technical/glossary.md#locked-mmd2-derivation) and [spectral weight](docs/technical/glossary.md#spectral-weight).
+- `[x] T1` [Week 1] [Confirm the exact Gaussian spectral normalization used by the locked MMD^2 derivation](src/iqp_bp/mmd/kernel.py#L34)
+  Current state: the Gaussian kernel, spectral weights, and Z-word sampling path now all use the same locked convention `k(x,y) = exp(-H(x,y)/(2 sigma^2))` with Walsh decay `tau = tanh(1/(4 sigma^2))`. See [locked MMD^2 derivation](docs/technical/glossary.md#locked-mmd2-derivation) and [spectral weight](docs/technical/glossary.md#spectral-weight).
   Docs to read first: [NumPy Generator]. Treat this as a theory-first task; no external API should be changed until the local derivation is locked.
 
 - `[~] T2` [Week 1] [Keep the Laplacian kernel path as an explicit stub until its MMD^2 decomposition is derived and checked](src/iqp_bp/mmd/kernel.py#L92)
   Current state: there is an approximate Laplacian implementation, but it is not yet a clearly validated or theory-locked final path.
   Docs to read first: [NumPy Generator]. Keep this implementation minimal until the local derivation is complete.
 
-- `[ ] T3` [Week 1] [Replace the generic 2D patch sampler with the exact nearest-neighbour ZZ lattice family in scope](src/iqp_bp/hypergraph/families.py#L93)
-  Current state: a 2D lattice-style generator exists, but it is still a generic patch sampler rather than the exact scope-locked family. See [ZZ lattice family](docs/technical/glossary.md#zz-lattice-family) and [generator](docs/technical/glossary.md#generator).
+- `[x] T3` [Week 1] [Replace the generic 2D patch sampler with the exact nearest-neighbour ZZ lattice family in scope](src/iqp_bp/hypergraph/families.py#L80)
+  Current state: the 2D lattice family is now the exact open-boundary square-grid nearest-neighbour ZZ construction, with square-only validation and deterministic row generation.
   Docs to read first: [NetworkX grid_2d_graph], [NumPy Generator].
 
 ### Reproducibility and Core Pipeline
@@ -74,8 +74,8 @@ Implementation docs index:
 
 ### Scaling Inputs
 
-- `[~] S1` [Weeks 3-4] [Calibrate the sparse Erdos-Renyi family to the SMART bounded-degree regime](src/iqp_bp/hypergraph/families.py#L58)
-  Current state: an Erdos-Renyi generator exists with configurable `p_edge`, but it is not yet calibrated to the SMART bounded-expected-degree regime. See [sparse Erdos-Renyi family](docs/technical/glossary.md#sparse-erdos-renyi-family).
+- `[x] S1` [Weeks 3-4] [Calibrate the sparse Erdos-Renyi family to the SMART bounded-degree regime](src/iqp_bp/hypergraph/families.py#L48)
+  Current state: `erdos_renyi` now samples a sparse pairwise graph with bounded expected degree using `p = min(1, c / n)` and returns one weight-2 generator row per sampled edge. See [sparse Erdos-Renyi family](docs/technical/glossary.md#sparse-erdos-renyi-family).
   Docs to read first: [NetworkX erdos_renyi_graph], [NumPy Generator].
 
 - `[~] S2` [Weeks 3-4] [Implement the Ising-like synthetic target and the structured real or binary-mixture target](src/iqp_bp/experiments/run_scaling.py#L130)
@@ -111,9 +111,9 @@ Implementation docs index:
 
 ### Validation Layer
 
-- `[~] V1` [Week 2] [Add Hypothesis strategies for the four SMART circuit families](src/iqp_bp/hypergraph/hypothesis_strategies.py#L27)
+- `[x] V1` [Week 2] [Add Hypothesis strategies for the four SMART circuit families](src/iqp_bp/hypergraph/hypothesis_strategies.py#L1)
   Depends on: `T3`, `S1`
-  Current state: generic and bounded-degree Hypothesis strategies exist, but not the full SMART family set.
+  Current state: the Hypothesis layer now samples the four SMART families only, and the family-specific tests cover the exact lattice and sparse ER structural invariants.
   Docs to read first: [Hypothesis API], [Hypothesis strategies], [Hypothesis NumPy], [pytest parametrize], [NetworkX grid_2d_graph], [NetworkX erdos_renyi_graph].
 
 - `[~] V2` [Week 2] [Wire the exact IQP expectation path into automated Monte Carlo vs exact validation plots](src/iqp_bp/iqp/expectation.py#L97)
@@ -201,7 +201,7 @@ Implementation docs index:
 
 ## Completed
 
-- None confirmed complete in the current audit.
+- `T1`, `T3`, `S1`, `V1`
 
 ## Suggested Execution Waves
 
