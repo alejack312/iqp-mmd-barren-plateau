@@ -1,9 +1,10 @@
 """CLI entry point for iqp_bp experiments.
 
 Usage:
-    python -m iqp_bp.cli run-scaling configs/experiments/scaling_v1.yaml
-    python -m iqp_bp.cli run-qiskit  configs/experiments/qiskit_validation.yaml
-    python -m iqp_bp.cli run-forge   configs/experiments/forge_sprint.yaml
+    python -m iqp_bp.cli run-scaling    configs/experiments/scaling_v1.yaml
+    python -m iqp_bp.cli run-qiskit     configs/experiments/qiskit_validation.yaml
+    python -m iqp_bp.cli run-validation configs/experiments/validation.yaml
+    python -m iqp_bp.cli run-forge      configs/experiments/forge_sprint.yaml
 """
 
 from __future__ import annotations
@@ -23,7 +24,7 @@ def main() -> None:
     # Read first: PyYAML https://pyyaml.org/wiki/PyYAMLDocumentation ; pathlib.Path
     # https://docs.python.org/3/library/pathlib.html#pathlib.Path ; json
     # https://docs.python.org/3/library/json.html
-    for cmd in ("run-scaling", "run-qiskit", "run-forge"):
+    for cmd in ("run-scaling", "run-qiskit", "run-validation", "run-forge"):
         p = sub.add_parser(cmd)
         p.add_argument("config", help="Path to experiment YAML config")
         p.add_argument("--dry-run", action="store_true", help="Print config and exit")

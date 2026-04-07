@@ -1,0 +1,50 @@
+# configs/experiments/scaling_ac_smoke.yaml
+# Minimal scaling sweep that also emits anti-concentration fields into JSONL.
+
+experiment:
+  name: scaling_ac_smoke
+  description: "Toy scaling sweep with exact anti-concentration diagnostics for small n"
+  seed: 11
+  output_dir: results/scaling_ac_smoke/
+  log_level: INFO
+
+circuit:
+  family: [complete_graph]
+  n_qubits: [4]
+  n_generators: "n"
+  lattice:
+    dimension: 2
+    range: 1
+  erdos_renyi:
+    p_edge: [2.0]
+
+kernel:
+  type: [gaussian]
+  bandwidth: [1.0]
+
+init:
+  scheme: [uniform]
+  uniform:
+    low: -3.14159265
+    high: 3.14159265
+
+dataset:
+  type: product_bernoulli
+  n_samples: 128
+
+estimation:
+  num_a_samples: 8
+  num_z_samples: 32
+  num_seeds: 2
+  use_jax: true
+  batch_size: 2
+
+anti_concentration:
+  enabled: true
+  max_n: 8
+  alphas: [0.5, 1.0, 2.0]
+  primary_alpha: 1.0
+  beta_min: 0.25
+  second_moment_threshold: 1.0
+  export_checkpoint: true
+  checkpoint_dir: checkpoints

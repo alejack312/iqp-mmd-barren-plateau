@@ -13,7 +13,12 @@ from typing import Any
 
 import numpy as np
 
+from iqp_bp.experiments.run_validation import (
+    evaluate_anti_concentration_from_model,
+    save_iqp_checkpoint,
+)
 from iqp_bp.hypergraph.families import make_hypergraph
+from iqp_bp.iqp.model import IQPModel
 from iqp_bp.mmd.gradients import estimate_gradient_variance
 from iqp_bp.mmd.mixture import dataset_expectations_batch
 from iqp_bp.rng import split_seeds
@@ -43,6 +48,21 @@ def run(cfg: dict[str, Any]) -> None:
     # pathlib.Path https://docs.python.org/3/library/pathlib.html#pathlib.Path ; json
     # https://docs.python.org/3/library/json.html
     dataset_cfg = cfg["dataset"]
+    anti_concentration_cfg = cfg.get("anti_concentration", {})
+    anti_concentration_enabled = bool(anti_concentration_cfg.get("enabled", True))
+    anti_concentration_max_n = int(anti_concentration_cfg.get("max_n", 16))
+    anti_concentration_alphas = tuple(
+        float(alpha) for alpha in anti_concentration_cfg.get("alphas", (0.5, 1.0, 2.0))
+    )
+    anti_concentration_primary_alpha = float(
+        anti_concentration_cfg.get("primary_alpha", 1.0)
+    )
+    anti_concentration_beta_min = float(anti_concentration_cfg.get("beta_min", 0.25))
+    anti_concentration_second_moment_threshold = float(
+        anti_concentration_cfg.get("second_moment_threshold", 1.0)
+    )
+    export_checkpoint = bool(anti_concentration_cfg.get("export_checkpoint", False))
+    checkpoints_dir = output_dir / anti_concentration_cfg.get("checkpoint_dir", "checkpoints")
 
     total = len(families) * len(kernels) * len(inits) * len(n_qubits_list)
     done = 0
@@ -67,6 +87,22 @@ def run(cfg: dict[str, Any]) -> None:
                         ]
 
                         kernel_params = _get_kernel_params(kernel, n, cfg["kernel"])
+                        anti_concentration_summary = _summarize_anti_concentration(
+                            enabled=anti_concentration_enabled,
+                            family=family,
+                            init_scheme=init_scheme,
+                            kernel=kernel,
+                            n=n,
+                            G=G,
+                            theta_list=theta_list,
+                            max_n=anti_concentration_max_n,
+                            alphas=anti_concentration_alphas,
+                            primary_alpha=anti_concentration_primary_alpha,
+                            beta_min=anti_concentration_beta_min,
+                            second_moment_threshold=anti_concentration_second_moment_threshold,
+                            export_checkpoint=export_checkpoint,
+                            checkpoints_dir=checkpoints_dir,
+                        )
 
                         for param_idx in range(min(5, actual_m)):  # sample 5 params per setting
                             rng_est = np.random.default_rng(base_seed + param_idx)
@@ -85,6 +121,7 @@ def run(cfg: dict[str, Any]) -> None:
                                 "param_idx": param_idx,
                                 **stats,
                                 **kernel_params,
+                                **anti_concentration_summary,
                             }
                             fout.write(json.dumps(record) + "\n")
 
@@ -178,3 +215,99 @@ def _get_kernel_params(kernel, n, kernel_cfg):
     elif kernel == "linear":
         return {}
     return {}
+
+
+def _summarize_anti_concentration(
+    *,
+    enabled: bool,
+    family: str,
+    init_scheme: str,
+    kernel: str,
+    n: int,
+    G: np.ndarray,
+    theta_list: list[np.ndarray],
+    max_n: int,
+    alphas: tuple[float, ...],
+    primary_alpha: float,
+    beta_min: float,
+    second_moment_threshold: float,
+    export_checkpoint: bool,
+    checkpoints_dir: Path,
+) -> dict[str, Any]:
+    """Return compact anti-concentration fields for one scaling setting."""
+    if not enabled:
+        return {
+            "anti_concentration_available": False,
+            "anti_concentration_reason": "disabled",
+        }
+
+    if n > max_n:
+        return {
+            "anti_concentration_available": False,
+            "anti_concentration_reason": f"n_exceeds_max_n:{n}>{max_n}",
+        }
+
+    if not theta_list:
+        return {
+            "anti_concentration_available": False,
+            "anti_concentration_reason": "missing_theta_seed",
+        }
+
+    model = IQPModel(G=G, theta=theta_list[0])
+    result = evaluate_anti_concentration_from_model(
+        model,
+        provenance={
+            "source": "scaling_seed",
+            "family": family,
+            "init": init_scheme,
+            "kernel": kernel,
+            "n": int(n),
+            "theta_seed_index": 0,
+        },
+        max_qubits=max_n,
+        alphas=alphas,
+        primary_alpha=primary_alpha,
+        beta_min=beta_min,
+        second_moment_threshold=second_moment_threshold,
+    )
+    checkpoint_path = None
+    if export_checkpoint:
+        checkpoint_path = save_iqp_checkpoint(
+            model,
+            checkpoints_dir / _checkpoint_name(family=family, init_scheme=init_scheme, kernel=kernel, n=n),
+            metadata={
+                "family": family,
+                "init": init_scheme,
+                "kernel": kernel,
+                "n": int(n),
+                "theta_seed_index": 0,
+                "source": "run_scaling",
+            },
+        )
+    threshold_beta_by_alpha = {
+        str(entry["alpha"]): float(entry["beta_hat"])
+        for entry in result["threshold_checks"]
+    }
+    summary = {
+        "anti_concentration_available": True,
+        "anti_concentration_reason": "exact_small_n",
+        "ac_theta_seed_index": 0,
+        "ac_mode": result["mode"],
+        "ac_primary_alpha": float(result["primary_alpha"]),
+        "ac_primary_beta_hat": float(result["primary_beta_hat"]),
+        "ac_passes_primary_threshold": bool(result["passes_primary_threshold"]),
+        "ac_scaled_second_moment": float(result["scaled_second_moment"]),
+        "ac_passes_second_moment_threshold": bool(
+            result["passes_second_moment_threshold"]
+        ),
+        "ac_max_probability_scaled": float(result["max_probability_scaled"]),
+        "ac_beta_hat_by_alpha": threshold_beta_by_alpha,
+    }
+    if checkpoint_path is not None:
+        summary["ac_checkpoint_path"] = str(checkpoint_path)
+    return summary
+
+
+def _checkpoint_name(*, family: str, init_scheme: str, kernel: str, n: int) -> str:
+    """Build a stable filename for a saved anti-concentration checkpoint."""
+    return f"{family}_n{n}_{kernel}_{init_scheme}_seed0.npz"

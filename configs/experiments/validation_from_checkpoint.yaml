@@ -1,0 +1,18 @@
+# configs/experiments/validation_from_checkpoint.yaml
+# Validate a checkpoint exported from the scaling smoke run.
+
+experiment:
+  name: anti_concentration_validation_from_checkpoint
+  description: "Exact anti-concentration validation driven by an exported deterministic checkpoint"
+  seed: 11
+  output_dir: results/validation_from_checkpoint/
+  log_level: INFO
+
+validation:
+  checkpoint_path: results/scaling_ac_smoke/checkpoints/complete_graph_n4_gaussian_uniform_seed0.npz
+  max_qubits: 8
+  alphas: [0.5, 1.0, 2.0]
+  primary_alpha: 1.0
+  beta_min: 0.25
+  second_moment_threshold: 1.0
+  output_stem: complete_graph_n4_checkpoint
