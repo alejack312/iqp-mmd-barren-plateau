@@ -1,0 +1,231 @@
+{
+  "main": {
+    "id": "276c750cbd593edd",
+    "type": "split",
+    "children": [
+      {
+        "id": "2e92e671d85f6621",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "de5a92f172af4589",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Initialization Schemes.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "Initialization Schemes"
+            }
+          }
+        ]
+      },
+      {
+        "id": "26ba2cc68252f7a0",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "a47d00a681ede4c2",
+            "type": "leaf",
+            "state": {
+              "type": "graph",
+              "state": {},
+              "icon": "lucide-git-fork",
+              "title": "Graph view"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "a7f750cbb9ecbbee",
+    "type": "split",
+    "children": [
+      {
+        "id": "6d1e5a33020a7ff7",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "25d6bdd3e4c7cb19",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Files"
+            }
+          },
+          {
+            "id": "e000422bd0ec1cef",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Search"
+            }
+          },
+          {
+            "id": "36900c6e7d9dc3b0",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Bookmarks"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "6c9068c569d839be",
+    "type": "split",
+    "children": [
+      {
+        "id": "f633a0cfdef658f6",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "b4be01229f015328",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "Initialization Schemes.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Backlinks for Initialization Schemes"
+            }
+          },
+          {
+            "id": "acf42fe97933efb4",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "Initialization Schemes.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Outgoing links from Initialization Schemes"
+            }
+          },
+          {
+            "id": "565c4b65fd4074cc",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "7bceabe0e9d44a43",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "All properties"
+            }
+          },
+          {
+            "id": "4468beefeba0fe03",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "Initialization Schemes.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Outline of Initialization Schemes"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "canvas:Create new canvas": false,
+      "daily-notes:Open today's daily note": false,
+      "templates:Insert template": false,
+      "command-palette:Open command palette": false,
+      "bases:Create new base": false
+    }
+  },
+  "active": "25d6bdd3e4c7cb19",
+  "lastOpenFiles": [
+    "Implementation Choices.md",
+    "Initialization Schemes.md",
+    "Erdos-Renyi Family.md",
+    "Complete Graph Family.md",
+    "Weekly Task - Anti-Concentration.md",
+    "Presentation - Anti-Concentration.md",
+    "Anti-Concentration.md",
+    "Hypergraph Families.md",
+    "Hypothesis Strategies.md",
+    "Checkpoint Bridge.md",
+    "Project Overview.md",
+    "Welcome.md",
+    "Binary Matrix.md",
+    "Generator.md",
+    "References.md",
+    "Glossary.md",
+    "Experiments MOC.md",
+    "TODO Roadmap.md",
+    "Scope Lock.md",
+    "SMART Spec.md",
+    "Proposal.md",
+    "Background and Motivation.md",
+    "Planning MOC.md",
+    "Learning Task.md",
+    "Gradient Concentration.md",
+    "IQP Classical Sampling.md"
+  ]
+}

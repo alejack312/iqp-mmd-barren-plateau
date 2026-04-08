@@ -2,7 +2,9 @@
 
 Dependency-aware execution list derived from `docs/SMART-spec.md` and the `TODO:` markers in `src/iqp_bp`.
 
-Audit status as of 2026-03-29:
+Audit status as of 2026-04-08:
+- The full anti-concentration track (`AC1`-`AC6`) is complete; the Apr 8 10:30 critical-path deadline was met.
+- Scaling grid expansion (`S6`) is complete; the runner sweeps the full Cartesian grid.
 - Several foundation and validation TODOs are now complete.
 - Many remaining TODOs still have partial scaffolding already present in the codebase.
 
@@ -175,9 +177,9 @@ Deadline for `AC1`-`AC6`: `2026-04-08 10:30` local time.
   Current state: the four primary families are present and used in configs, but the policy is not centrally enforced.
   Docs to read first: [itertools.product], [json module].
 
-- `[~] S6` [Weeks 3-4] [Expand the scaling runner to sweep the full Cartesian grid of experiment axes](src/iqp_bp/experiments/run_scaling.py#L39)
+- `[x] S6` [Weeks 3-4] [Expand the scaling runner to sweep the full Cartesian grid of experiment axes](src/iqp_bp/experiments/run_scaling.py#L39)
   Depends on: `P1`, `P2`, `S2`, `S4`, `S5`
-  Current state: the scaling runner loops over families, kernels, inits, and `n`, but it still collapses several axis lists to a single value.
+  Current state: `resolve_scaling_settings` expands the full Cartesian product over family, kernel, init, `n`, per-kernel bandwidth, per-family ER degree, and per-init small-angle std via `itertools.product`, and writes one JSONL record per resolved scalar setting and parameter index.
   Docs to read first: [itertools.product], [pathlib.Path], [json module].
 
 - `[~] S7` [Weeks 3-4] [Extend gradient-variance summaries with aggregate norm proxies and heavy-tail diagnostics](src/iqp_bp/mmd/gradients.py#L164)
@@ -190,9 +192,9 @@ Deadline for `AC1`-`AC6`: `2026-04-08 10:30` local time.
   Current state: raw JSONL records are written, but no fitting or memo-oriented summaries are produced.
   Docs to read first: [SciPy curve_fit], [pathlib.Path], [json module].
 
-- `[ ] AC6` [Due Apr 8 10:30] [Emit anti-concentration summaries and checkpoint plots alongside the scaling outputs](src/iqp_bp/experiments/run_scaling.py#L39)
+- `[x] AC6` [Due Apr 8 10:30] [Emit anti-concentration summaries and checkpoint plots alongside the scaling outputs](src/iqp_bp/experiments/run_scaling.py#L39)
   Depends on: `AC4`, `S6`
-  Current state: the scaling runner writes gradient-variance records only; it does not attach output-distribution diagnostics for the trained checkpoints chosen for follow-up.
+  Current state: `run_scaling.py` calls `_summarize_anti_concentration` for every setting with `n <= anti_concentration.max_n`, serializes per-setting summary JSON, thresholds CSV, and threshold/diagnostics plots via `write_anti_concentration_artifacts`, optionally exports `.npz` checkpoints through `save_iqp_checkpoint`, and copies compact `ac_*` fields onto each gradient-variance JSONL row while keeping the artifact schema separate. Landed in commit `da9db4a` ("feat: Implement scaling dataset factory and finish AC6 anti-concentration artifacts").
   Docs to read first: [pathlib.Path], [json module], [SciPy curve_fit]. Keep the anti-concentration output schema separate from the gradient-scaling schema so downstream analysis can distinguish them cleanly.
 
 ### Qiskit Validation
