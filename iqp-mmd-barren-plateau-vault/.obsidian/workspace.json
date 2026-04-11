@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Initialization Schemes.md",
+                "file": "IQP Circuits.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Initialization Schemes"
+              "title": "IQP Circuits"
             }
           }
         ]
@@ -69,7 +69,7 @@
             "state": {
               "type": "search",
               "state": {
-                "query": "",
+                "query": "2n",
                 "matchingCase": false,
                 "explainSearch": false,
                 "collapseAll": false,
@@ -110,7 +110,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "Initialization Schemes.md",
+                "file": "IQP Circuits.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -120,7 +120,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Backlinks for Initialization Schemes"
+              "title": "Backlinks for IQP Circuits"
             }
           },
           {
@@ -129,12 +129,12 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "Initialization Schemes.md",
+                "file": "IQP Circuits.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
-              "title": "Outgoing links from Initialization Schemes"
+              "title": "Outgoing links from IQP Circuits"
             }
           },
           {
@@ -172,13 +172,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Initialization Schemes.md",
+                "file": "IQP Circuits.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline of Initialization Schemes"
+              "title": "Outline of IQP Circuits"
             }
           }
         ]
@@ -199,19 +199,24 @@
       "bases:Create new base": false
     }
   },
-  "active": "25d6bdd3e4c7cb19",
+  "active": "de5a92f172af4589",
   "lastOpenFiles": [
-    "Implementation Choices.md",
-    "Initialization Schemes.md",
-    "Erdos-Renyi Family.md",
-    "Complete Graph Family.md",
+    "Locked MMD² Derivation.md",
+    "Gaussian Convention.md",
+    "Data-Dependent Initialization Across Architectures.md",
+    "Project Overview.md",
+    "Qiskit Circuit Builder.md",
+    "RNG.md",
     "Weekly Task - Anti-Concentration.md",
     "Presentation - Anti-Concentration.md",
     "Anti-Concentration.md",
+    "Initialization Schemes.md",
+    "Implementation Choices.md",
+    "Erdos-Renyi Family.md",
+    "Complete Graph Family.md",
     "Hypergraph Families.md",
     "Hypothesis Strategies.md",
     "Checkpoint Bridge.md",
-    "Project Overview.md",
     "Welcome.md",
     "Binary Matrix.md",
     "Generator.md",
@@ -221,11 +226,6 @@
     "TODO Roadmap.md",
     "Scope Lock.md",
     "SMART Spec.md",
-    "Proposal.md",
-    "Background and Motivation.md",
-    "Planning MOC.md",
-    "Learning Task.md",
-    "Gradient Concentration.md",
-    "IQP Classical Sampling.md"
+    "Proposal.md"
   ]
 }

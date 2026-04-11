@@ -11,12 +11,18 @@ Cited papers and their role in the project. The PDFs live under [`docs/papers/`]
 
 ## Core References
 
-### Scaling GQML — Rudolph et al. 2023 / 2025
+### Recio-Armengol et al. 2025 — Scaling GQML
 
 **Train on classical, deploy on quantum: scaling generative quantum machine learning to a thousand qubits**
-arXiv:[2503.02934](https://arxiv.org/abs/2503.02934)
+Erik Recio-Armengol, Shahnawaz Ahmed, and Joseph Bowles (Xanadu + ICFO + Eurecat)
+arXiv:[2503.02934](https://arxiv.org/abs/2503.02934) (v1 Mar 2025, v2 Feb 2026)
 
-The paper that motivates the whole classical-training paradigm. Shows that MMD loss expectations for IQP circuits can be computed classically and that training is feasible up to ~1000 qubits. The [[Gaussian Convention]] follows this paper's convention. The [[iqp_mmd Package]] is a modular reimplementation of its pipeline.
+The paper that motivates the whole classical-training paradigm. Shows that MMD loss expectations for IQP circuits can be computed classically and that training is feasible up to ~1000 qubits. The [[Gaussian Convention]] follows this paper's convention. The [[iqp_mmd Package]] is a modular reimplementation of its pipeline. The [[Locked MMD² Derivation]] walks through Secs. 3.3–4 of the paper in detail.
+
+The data-dependent init recipe used as "Recipe A" in [[Data-Dependent Initialization Across Architectures|Data-Dependent Initialization Across Families]] comes from Sec. 8.1.2 of this paper.
+
+> [!warning] Attribution fix
+> Earlier versions of this note incorrectly credited 2503.02934 to "Rudolph et al." The actual authors are Recio-Armengol, Ahmed, and Bowles. Rudolph et al. *is* cited by this paper (for the MMD² mixture form, Rudolph et al. 2024, which is the precursor to Prop. 2), but they are not authors of 2503.02934. The separate "Rudolph 2023 — Trainability Barriers" entry below is a different paper (2305.02881) that is actually authored by Manuel S. Rudolph and collaborators.
 
 **PDF:** `docs/papers/2503.02934v2 (3).pdf`
 
@@ -72,8 +78,8 @@ These PDFs are all under `docs/papers/`. They motivate the [[IQP Classical Sampl
 
 | Reference | Role in project |
 |---|---|
-| Rudolph 2023 (2305.02881) | "Loss matters" — kernel-induced plateau avoidance |
-| Rudolph 2025 (2503.02934) | Classical training at 1000 qubits; Gaussian convention |
+| Rudolph et al. 2023 (2305.02881) | "Loss matters" — kernel-induced plateau avoidance |
+| Recio-Armengol et al. 2025 (2503.02934) | Classical training at 1000 qubits; Gaussian convention; MMD-as-observable derivation |
 | Larocca 2024 (2405.00781) | BP theory; average-case landscape framing |
 | Mhiri 2025 (2502.07889) | Warm-start trainable-valley guarantees |
 | Paper 2512.24801 | Anti-concentration criterion |

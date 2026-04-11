@@ -58,5 +58,6 @@ The hypothesis is that locality (lattice, bounded-degree) suppresses plateau beh
 
 - [[Hypergraph Families]] — the code
 - [[Generator Matrix]]
+- [[Data-Dependent Initialization Across Architectures|Data-Dependent Initialization Across Families]] — does the Recio-Armengol et al. 2025 I3 recipe apply uniformly to all four SMART families?
 - [[Research Questions]] — Q2
 - [[Scope Lock]] — section 4

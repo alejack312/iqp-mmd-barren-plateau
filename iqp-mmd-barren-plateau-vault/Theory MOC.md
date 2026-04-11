@@ -38,6 +38,7 @@ All mathematical machinery the project relies on. Each page links back into the 
 ## Experimental Design
 
 - [[Initialization Schemes]] — uniform, small-angle, data-dependent
+- [[Data-Dependent Initialization Across Architectures|Data-Dependent Initialization Across Families]] — does the Recio-Armengol et al. 2025 recipe work for all four SMART IQP families (product / lattice / ER / complete)?
 - [[Families MOC]] — IQP connectivity families
 - [[Kernels MOC]] — MMD kernels
 - [[Datasets]] — product Bernoulli, Ising, binary mixture

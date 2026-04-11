@@ -68,6 +68,7 @@ From [[How a Scaling Run Works]]:
 
 ## Related
 
+- [[Data-Dependent Initialization Across Architectures|Data-Dependent Initialization Across Families]] — whether I3 works for all four SMART families and how the literature recipe compares to the lightweight implementation
 - [[Gradient Variance]]
 - [[Barren Plateaus]]
 - [[Scaling Runner]]
