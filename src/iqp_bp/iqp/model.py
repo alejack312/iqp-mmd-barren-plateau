@@ -8,6 +8,18 @@ from iqp_bp.hypergraph.families import make_hypergraph
 from iqp_bp.iqp.expectation import iqp_expectation, iqp_expectation_exact
 
 
+def _coerce_for_json(v: object) -> object:
+    """Recursively convert numpy scalars and arrays to JSON-serializable Python types."""
+    if hasattr(v, "item"):
+        return v.item()  # numpy scalar → Python int/float/bool
+    if isinstance(v, dict):
+        return {str(k): _coerce_for_json(w) for k, w in v.items()}
+    if isinstance(v, (list, tuple)):
+        coerced = [_coerce_for_json(w) for w in v]
+        return coerced if isinstance(v, list) else tuple(coerced)
+    return v
+
+
 class IQPModel:
     """Parameterized IQP circuit model.
 
@@ -16,15 +28,24 @@ class IQPModel:
         theta: Current parameters, shape (m,)
         n: Number of qubits
         m: Number of generators
+        provenance: JSON-serializable dict recording the circuit family and
+            generation details (family name, requested/generated n and m,
+            family-specific kwargs, optional rng seed label).
     """
 
-    def __init__(self, G: np.ndarray, theta: np.ndarray | None = None):
+    def __init__(
+        self,
+        G: np.ndarray,
+        theta: np.ndarray | None = None,
+        provenance: dict | None = None,
+    ):
         self.G = G.astype(np.uint8)
         self.m, self.n = G.shape
         if theta is None:
             self.theta = np.zeros(self.m)
         else:
             self.theta = np.asarray(theta, dtype=np.float64)
+        self.provenance: dict = dict(provenance) if provenance is not None else {}
 
     @classmethod
     def from_family(
@@ -33,17 +54,42 @@ class IQPModel:
         n: int,
         m: int | None = None,
         rng: np.random.Generator | None = None,
+        rng_seed: int | None = None,
         **family_kwargs,
     ) -> "IQPModel":
-        """Construct from a named circuit family."""
+        """Construct from a named circuit family.
+
+        Args:
+            family: Named hypergraph family (e.g. ``"complete_graph"``).
+            n: Number of qubits.
+            m: Number of generators; defaults to ``n`` when ``None``.
+            rng: NumPy random generator for circuit sampling.
+            rng_seed: Integer seed label stored in provenance so downstream
+                consumers can recover the exact circuit generation seed without
+                inspecting the generator's internal state.
+            **family_kwargs: Extra keyword arguments forwarded to the family
+                constructor (e.g. ``p_edge`` for ``"erdos_renyi"``).
+
+        Returns:
+            A new :class:`IQPModel` whose ``provenance`` attribute records
+            ``family``, requested and generated ``m``, ``n``, ``family_kwargs``,
+            and (if provided) ``rng_seed``.
+        """
+        m_requested = m
         if m is None:
             m = n
-        # TODO: Week 1 (D1.3) preserve family / generation metadata on the model so
-        # experiment records and Qiskit exports can recover the exact circuit provenance.
-        # Read first: json https://docs.python.org/3/library/json.html ; pathlib.Path
-        # https://docs.python.org/3/library/pathlib.html#pathlib.Path
         G = make_hypergraph(family=family, n=n, m=m, rng=rng, **family_kwargs)
-        return cls(G)
+        m_generated = int(G.shape[0])
+        provenance: dict = {
+            "family": str(family),
+            "n": int(n),
+            "m_requested": int(m_requested) if m_requested is not None else int(n),
+            "m_generated": m_generated,
+            "family_kwargs": _coerce_for_json(dict(family_kwargs)),
+        }
+        if rng_seed is not None:
+            provenance["rng_seed"] = _coerce_for_json(rng_seed)
+        return cls(G, provenance=provenance)
 
     def expectation(
         self,

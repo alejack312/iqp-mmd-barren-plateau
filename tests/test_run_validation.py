@@ -4,16 +4,21 @@ from __future__ import annotations
 
 import csv
 import json
+import math
 from pathlib import Path
 from uuid import uuid4
 
 import numpy as np
+from hypothesis import HealthCheck, given, settings, strategies as st
 
 from iqp_bp.experiments.run_validation import (
+    evaluate_anti_concentration_from_probabilities,
+    evaluate_anti_concentration_from_samples,
     evaluate_anti_concentration_from_model,
     run,
     samples_to_probability_vector,
 )
+from iqp_bp.hypergraph.hypothesis_strategies import anti_concentration_binary_samples
 from iqp_bp.iqp.model import IQPModel
 
 
@@ -126,3 +131,62 @@ def test_run_validation_from_samples_path_uses_empirical_histogram_mode():
     assert result["provenance"]["source"] == "samples_path"
     summary_path = output_dir / "sample_validation.json"
     assert summary_path.exists()
+
+
+@settings(
+    max_examples=40,
+    deadline=None,
+    suppress_health_check=[HealthCheck.too_slow],
+)
+@given(samples=anti_concentration_binary_samples())
+def test_samples_to_probability_vector_returns_valid_histogram_for_binary_samples(
+    samples: np.ndarray,
+):
+    """Any binary sample matrix should produce a valid empirical histogram."""
+    probabilities = samples_to_probability_vector(samples)
+
+    assert probabilities.shape == (2 ** samples.shape[1],)
+    assert np.all(probabilities >= 0.0)
+    assert math.isclose(float(probabilities.sum()), 1.0)
+    assert np.array_equal(
+        probabilities,
+        samples_to_probability_vector(samples[::-1]),
+    )
+
+
+@settings(
+    max_examples=40,
+    deadline=None,
+    suppress_health_check=[HealthCheck.too_slow],
+)
+@given(
+    samples=anti_concentration_binary_samples(),
+    primary_alpha=st.sampled_from([0.5, 1.0, 1.5, 2.0]),
+)
+def test_sample_validation_matches_probability_validation(
+    samples: np.ndarray,
+    primary_alpha: float,
+):
+    """The sample wrapper should agree with the histogram-first probability path."""
+    probabilities = samples_to_probability_vector(samples)
+    provenance = {"source": "property-test"}
+
+    from_samples = evaluate_anti_concentration_from_samples(
+        samples,
+        provenance=provenance,
+        alphas=(0.5, 1.0, 2.0),
+        primary_alpha=primary_alpha,
+        beta_min=0.25,
+        second_moment_threshold=1.0,
+    )
+    from_probabilities = evaluate_anti_concentration_from_probabilities(
+        probabilities,
+        provenance=provenance,
+        mode="empirical_histogram",
+        alphas=(0.5, 1.0, 2.0),
+        primary_alpha=primary_alpha,
+        beta_min=0.25,
+        second_moment_threshold=1.0,
+    )
+
+    assert from_samples == from_probabilities

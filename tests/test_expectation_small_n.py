@@ -1,7 +1,8 @@
 """Tests: IQP expectation estimator correctness for small n.
 
 Validates iqp_expectation against iqp_expectation_exact (brute-force)
-for n ≤ 12.
+for n ≤ 12.  Also checks that the batched streaming path produces
+numerically identical results to the single-batch path for a fixed seed.
 """
 
 import numpy as np
@@ -112,3 +113,42 @@ def test_mc_estimate_close_to_exact_hypothesis(n: int, seed: int):
     )
     tol = max(5 * stderr, 0.1)
     assert abs(est - exact) < tol, f"n={n}: |est-exact|={abs(est-exact):.4f} > tol={tol:.4f}"
+
+
+# ---------------------------------------------------------------------------
+# Parity tests: batched (streaming) path must match unbatched for fixed seed
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("batch_size", [32, 64, 256, 512])
+@pytest.mark.parametrize("n,seed", [(4, 10), (6, 20), (8, 30)])
+def test_batched_matches_unbatched_parity(n: int, seed: int, batch_size: int):
+    """Batched and unbatched estimates must agree to within floating-point tolerance.
+
+    Both paths draw z-samples from the same RNG state in the same order
+    (numpy Generator is sequential), so any difference is purely due to
+    floating-point reordering in the Welford accumulation.  We expect
+    agreement well within 1e-10.
+    """
+    num_z_samples = 512  # divisible by all batch_size values above
+    G, theta, a = _random_instance(n, m=n, seed=seed)
+
+    unbatched_est, unbatched_se = iqp_expectation(
+        theta, G, a,
+        num_z_samples=num_z_samples,
+        rng=np.random.default_rng(seed + 50),
+    )
+    batched_est, batched_se = iqp_expectation(
+        theta, G, a,
+        num_z_samples=num_z_samples,
+        batch_size=batch_size,
+        rng=np.random.default_rng(seed + 50),
+    )
+
+    assert abs(batched_est - unbatched_est) < 1e-10, (
+        f"n={n}, batch_size={batch_size}: estimate mismatch "
+        f"batched={batched_est:.10f} unbatched={unbatched_est:.10f}"
+    )
+    assert abs(batched_se - unbatched_se) < 1e-10, (
+        f"n={n}, batch_size={batch_size}: stderr mismatch "
+        f"batched={batched_se:.10f} unbatched={unbatched_se:.10f}"
+    )
