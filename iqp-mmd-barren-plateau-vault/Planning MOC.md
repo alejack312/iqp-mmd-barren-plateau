@@ -17,6 +17,9 @@ Research direction, scoping, and the current TODO queue.
 - [[Scope Lock]] — the locked model definition, experiment grid, and success criterion
 - [[TODO Roadmap]] — dependency-ordered task list with completion status
 - [[Implementation Choices]] — why the code looks the way it does
+- [[Design Decisions - AC7 to AC12]] — supervisor extension: learned-distribution AC + marginal evolution + σ sweep (2026-04-19)
+- [[AC7 to AC12 Implementation]] — what we built, how to run it, trajectory row schema, and the supervisor-facing FAQ
+- [[Anti-Concentration vs Marginal Agreement]] — conceptual refinement: the two properties the supervisor's ask conflates, and how it changes what `AC11`/`AC12` measure
 - [[References]] — cited papers with notes
 
 ## Key Deadlines

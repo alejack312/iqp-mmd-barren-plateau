@@ -38,6 +38,19 @@ Dependency-ordered task list derived from [[SMART Spec]] and the `TODO:` markers
 - `[x] AC5` Deterministic AC pass/fail boundary tests (uniform pass, delta fail, sample-to-exact convergence) — see [[Tests]]
 - `[x] AC6` Emit AC summaries and checkpoint plots alongside scaling outputs — see [[Scaling Runner#Anti-Concentration Block]]. Landed in commit `da9db4a`.
 
+## Anti-Concentration Extension — Supervisor 2026-04-19
+
+Design rationale in [[Design Decisions - AC7 to AC12]]. Implementation review, run instructions, trajectory schema, and supervisor FAQ in [[AC7 to AC12 Implementation]].
+
+Code shipped; experimental sweeps still pending.
+
+- `[x] AC7` Marginal computation module (exact + sample paths) — `src/iqp_bp/distributions/marginals.py`
+- `[x] AC8` Marginal-mismatch metrics (TV, χ², squared Fourier error), stratified by order — `src/iqp_bp/distributions/marginal_metrics.py`
+- `[x] AC9` Minimal MMD training loop on the existing analytic gradient — `src/iqp_bp/training/trainer.py`
+- `[x] AC10` Per-step AC + marginal diagnostics on the training trajectory — `src/iqp_bp/experiments/run_training.py`
+- `[~] AC11` Ghosh–Kim learned-distribution AC (configs in place, sweeps not yet run) — `configs/experiments/ghosh_kim_{small_n,large_n_sampled}.yaml`
+- `[~] AC12` Bandwidth sweep: marginal matching vs σ (config in place, sweep not yet run) — `configs/experiments/bandwidth_marginal_sweep.yaml`
+
 ## Scaling Inputs
 
 - `[x] S1` Calibrate sparse Erdős–Rényi family to SMART bounded-degree regime — see [[Erdos-Renyi Family]]

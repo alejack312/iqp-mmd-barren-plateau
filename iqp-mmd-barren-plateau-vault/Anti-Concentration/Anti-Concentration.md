@@ -112,10 +112,22 @@ See [[Checkpoint Bridge]].
 
 Both are needed. A regime can pass trainability and fail anti-concentration (or vice versa).
 
+## Learned-Distribution Trajectories
+
+As of 2026-04-19 the AC check also runs at every persisted step of a training trajectory. `run-training` (see [[AC7 to AC12 Implementation]]) emits `ac_scaled_second_moment`, `ac_primary_beta_hat`, and the full `ac_beta_hat_by_alpha` dict on every trajectory row, in either `exact` mode (full probability vector) or `sample` mode (bitstring histogram).
+
+> [!warning] Strict AC is the wrong question for this project
+> The supervisor's 2026-04-19 ask was framed as "were the learned distributions anti-concentrated?" but what she actually wants is **agreement on high-order marginals**, which is a property *relating* two distributions. Learned distributions in [[References#Paper 2503.02934|Recio-Armengol et al.]] almost certainly pass strict AC — trivially, because training smoothed them *away* from the target's mode structure. See [[Anti-Concentration vs Marginal Agreement]] for the full unpacking.
+
+Pending results: [[AC7 to AC12 Implementation#6. What's Still Missing|Ghosh–Kim small-$n$ and large-$n$ sweeps]].
+
 ## Related
 
 - [[Walsh-Hadamard Transform]]
 - [[IQP Classical Sampling]]
 - [[Validation Runner]]
 - [[Checkpoint Bridge]]
+- [[AC7 to AC12 Implementation]] — learned-distribution AC + marginal evolution pipeline
+- [[Design Decisions - AC7 to AC12]] — scope decisions for the supervisor's 2026-04-19 extension
+- [[Bandwidth Marginals]] — σ sweep (AC12)
 - [[References#Paper 2512.24801]]

@@ -36,6 +36,7 @@ See [[Configs]] for details.
 ## Walkthroughs
 
 - [[How a Scaling Run Works]] — end-to-end walkthrough of the main runner
+- [[F3 Plateau Agreement Validation]] — first Forge plateau-agreement run against a diversified labeled scaling dataset
 
 ## CLI
 
