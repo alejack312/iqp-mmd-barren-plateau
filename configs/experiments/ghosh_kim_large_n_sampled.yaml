@@ -1,0 +1,50 @@
+experiment:
+  name: ghosh_kim_large_n_sampled
+  description: "Sampled learned-distribution AC cell using exact-vector sampling at n=20"
+  output_dir: results/ac_ghosh_kim/large_n_sampled
+  seed: 22
+
+circuit:
+  family: erdos_renyi
+  n_qubits: [20]
+  erdos_renyi:
+    p_edge: [2.0]
+
+kernel:
+  type: gaussian
+  bandwidth: [1.0, 3.0, 9.0]
+
+init:
+  scheme: uniform
+
+dataset:
+  type: ising
+  n_samples: 1024
+  ising:
+    beta: 1.0
+    topology: erdos_renyi
+    coupling_std: 1.0
+    burn_in_sweeps: 200
+    thinning: 2
+    num_chains: 4
+
+estimation:
+  num_a_samples: 96
+  num_z_samples: 192
+  batch_size: 64
+
+training:
+  optimizer: adam
+  lr: 0.02
+  num_steps: 10
+  checkpoint_every: 5
+  loss_mode: sampled
+  exact_loss_max_n: 12
+  diagnostics:
+    enabled: true
+    distribution_mode: sample
+    exact_probability_max_n: 0
+    sample_from_exact_probability_max_n: 20
+    sample_count: 8192
+    max_order: 6
+    max_subsets_per_order: 128

@@ -1,0 +1,48 @@
+experiment:
+  name: training_smoke
+  description: "Small exact learned-distribution smoke test"
+  output_dir: results/training_smoke
+  seed: 11
+
+circuit:
+  family: product_state
+  n_qubits: [6]
+
+kernel:
+  type: gaussian
+  bandwidth: [4.0]
+
+init:
+  scheme: small_angle
+  small_angle:
+    std: [0.15]
+
+dataset:
+  type: product_bernoulli
+  n_samples: 256
+
+estimation:
+  num_a_samples: 64
+  num_z_samples: 128
+  batch_size: 32
+
+training:
+  optimizer: sgd
+  lr: 0.05
+  num_steps: 4
+  checkpoint_every: 1
+  loss_mode: exact_small_n
+  exact_loss_max_n: 8
+  diagnostics:
+    enabled: true
+    distribution_mode: exact
+    exact_probability_max_n: 8
+    sample_from_exact_probability_max_n: 8
+    sample_count: 2048
+    max_order: 3
+    max_subsets_per_order: 20
+    anti_concentration:
+      alphas: [0.5, 1.0, 2.0]
+      primary_alpha: 1.0
+      beta_min: 0.25
+      second_moment_threshold: 1.0
