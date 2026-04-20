@@ -272,6 +272,46 @@ Copied-stack handoff:
 - this keeps training concerns on the `iqp_mmd` side and anti-concentration
   evaluation on the `iqp_bp` side
 
+## Learned-Distribution Trajectories
+
+The next anti-concentration question is no longer about one initialized IQP
+model. It is about the whole trajectory of a learned distribution under MMD
+training.
+
+The repo now supports that trajectory view through `run-training`:
+
+- the trainer persists `theta`, loss, wall clock, and an `.npz` checkpoint at
+  step `0`, every `checkpoint_every` steps, and the final step
+- each persisted row can also carry anti-concentration diagnostics and a
+  per-order marginal summary
+- the marginal summary is written both inline in the trajectory JSONL and as a
+  per-step JSON sidecar under `runs/<setting>/marginals/`
+
+Two distribution modes exist for these diagnostics:
+
+- `distribution_mode: exact` computes the exact output probability vector and
+  runs the small-`n` exact anti-concentration checker
+- `distribution_mode: sample` draws bitstring samples from an exact
+  probability-vector path when `n` is still within the exact-enumeration cap,
+  then runs the histogram-based anti-concentration checker
+
+This second mode is intentionally labeled as a secondary diagnostic. It is
+useful for the AC11 "larger-n sampled" cell, but it is not the same claim as
+the exact small-`n` checker.
+
+The trajectory rows expose:
+
+- `ac_scaled_second_moment`
+- `ac_primary_beta_hat`
+- `ac_passes_primary_threshold`
+- `marginal_orders`
+- `marginal_weighted_mmd2_total`
+
+For Gaussian MMD, the marginal summary is tied directly to Rudolph's
+`tau = tanh(1 / (4 sigma^2))` weighting: each order-`k` row reports the
+kernel-weighted contribution that the current bandwidth gives to `|S| = k`
+Walsh modes.
+
 ## Scope
 
 This note locks the definitions only. Threshold choices such as a default

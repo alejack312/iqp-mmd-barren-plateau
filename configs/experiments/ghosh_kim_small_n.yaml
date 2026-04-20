@@ -1,0 +1,48 @@
+experiment:
+  name: ghosh_kim_small_n
+  description: "Exact small-n learned-distribution AC cell"
+  output_dir: results/ac_ghosh_kim/small_n_exact
+  seed: 21
+
+circuit:
+  family: lattice
+  n_qubits: [9]
+  lattice:
+    dimension: 2
+    range: 1
+
+kernel:
+  type: gaussian
+  bandwidth: [1.0, 3.0, 9.0]
+
+init:
+  scheme: uniform
+
+dataset:
+  type: binary_mixture
+  n_samples: 512
+  binary_mixture:
+    n_modes: 4
+    noise: 0.1
+    threshold: 0.0
+
+estimation:
+  num_a_samples: 128
+  num_z_samples: 256
+  batch_size: 64
+
+training:
+  optimizer: adam
+  lr: 0.03
+  num_steps: 20
+  checkpoint_every: 5
+  loss_mode: exact_small_n
+  exact_loss_max_n: 12
+  diagnostics:
+    enabled: true
+    distribution_mode: exact
+    exact_probability_max_n: 12
+    sample_from_exact_probability_max_n: 12
+    sample_count: 4096
+    max_order: 9
+    max_subsets_per_order: 128

@@ -44,3 +44,19 @@ def dataset_expectations_batch(data: np.ndarray, a_batch: np.ndarray) -> np.ndar
     parities = (data @ a_batch.T) % 2  # (N, B)
     signs = 1.0 - 2.0 * parities.astype(np.float64)
     return signs.mean(axis=0)  # (B,)
+
+
+def dataset_expectations_exact(data: np.ndarray, n: int) -> np.ndarray:
+    """Compute ⟨Z_a⟩_p for all 2^n observables via full enumeration.
+
+    Returns shape (2^n,).  Entry i corresponds to the binary observable
+    a where a[j] = (i >> j) & 1 (LSB = qubit 0), consistent with
+    :func:`spectral_weights_exact` in ``kernel.py``.
+
+    Requires n <= 20.
+    """
+    if n > 20:
+        raise ValueError(f"dataset_expectations_exact: n={n} > 20")
+    idx = np.arange(2**n, dtype=np.intp)
+    all_a = ((idx[:, None] >> np.arange(n)) & 1).astype(np.uint8)  # (2^n, n)
+    return dataset_expectations_batch(data, all_a)

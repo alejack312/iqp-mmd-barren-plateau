@@ -44,7 +44,7 @@ def iqp_phase(
 
     # (-1)^{z · g_j} for each (sample, generator): shape (B, m)
     z_dot_G = z @ G.T  # (B, m), values 0..n
-    sign = 1 - 2 * (z_dot_G % 2)  # (-1)^{z·g_j}, shape (B, m)
+    sign = 1.0 - 2.0 * ((z_dot_G % 2).astype(np.float64))  # (-1)^{z·g_j}, shape (B, m)
 
     # Φ = 2 · Σ_j θ_j · (a·g_j mod 2) · (-1)^{z·g_j}
     weighted = theta * a_dot_g  # (m,)
@@ -57,6 +57,7 @@ def iqp_expectation(
     a: np.ndarray,
     num_z_samples: int = 1024,
     rng: np.random.Generator | None = None,
+    batch_size: int | None = None,
 ) -> tuple[float, float]:
     """Estimate ⟨Z_a⟩_{q_θ} via Monte Carlo over z ~ U({0,1}^n).
 
@@ -66,22 +67,63 @@ def iqp_expectation(
         a: Observable bitmask, shape (n,)
         num_z_samples: Number of Monte Carlo samples B
         rng: NumPy random generator (seeded)
+        batch_size: If given, process z-samples in chunks of this size so peak
+            memory stays O(batch_size · n) rather than O(num_z_samples · n).
+            Mean and variance are accumulated online via the parallel Welford
+            algorithm; the return value is identical in structure to the
+            unbatched path.
 
     Returns:
         (estimate, stderr): point estimate and standard error
     """
     if rng is None:
         rng = np.random.default_rng()
-    # TODO: Week 1 (D1.3) add stable batching / streaming over z samples so the
-    # expectation engine can scale without memory blowups while still reporting CI data.
-    # Read first: NumPy Generator https://numpy.org/doc/stable/reference/random/generator.html
+    if num_z_samples <= 0:
+        raise ValueError("num_z_samples must be positive")
+    if batch_size is not None and batch_size <= 0:
+        raise ValueError("batch_size must be positive when provided")
     n = G.shape[1]
-    z = rng.integers(0, 2, size=(num_z_samples, n), dtype=np.uint8)
-    phases = iqp_phase(theta, G, z, a)
-    cos_vals = np.cos(phases)
-    estimate = float(cos_vals.mean())
-    stderr = float(cos_vals.std() / np.sqrt(num_z_samples))
-    return estimate, stderr
+
+    if batch_size is None:
+        # Single-batch path — materialize all z-samples at once.
+        z = rng.integers(0, 2, size=(num_z_samples, n), dtype=np.uint8)
+        phases = iqp_phase(theta, G, z, a)
+        cos_vals = np.cos(phases)
+        estimate = float(cos_vals.mean())
+        stderr = float(cos_vals.std() / np.sqrt(num_z_samples))
+        return estimate, stderr
+
+    # Streaming batched path — accumulate mean and M2 (sum of squared deviations)
+    # using Chan's parallel Welford algorithm so no full cosine array is held in
+    # memory.  The update rule for combining group A (count, mean, M2) with a new
+    # batch B (count_b, mean_b, M2_b) is:
+    #   delta      = mean_b - mean_A
+    #   new_count  = count_A + count_b
+    #   new_mean   = mean_A + delta * count_b / new_count
+    #   new_M2     = M2_A + M2_b + delta^2 * count_A * count_b / new_count
+    count = 0
+    mean = 0.0
+    M2 = 0.0
+    remaining = num_z_samples
+    while remaining > 0:
+        chunk = min(batch_size, remaining)
+        z_chunk = rng.integers(0, 2, size=(chunk, n), dtype=np.uint8)
+        cos_chunk = np.cos(iqp_phase(theta, G, z_chunk, a))
+
+        count_b = chunk
+        mean_b = float(cos_chunk.mean())
+        M2_b = float(np.sum((cos_chunk - mean_b) ** 2))
+
+        delta = mean_b - mean
+        new_count = count + count_b
+        mean = mean + delta * count_b / new_count
+        M2 = M2 + M2_b + delta ** 2 * count * count_b / new_count
+        count = new_count
+        remaining -= chunk
+
+    # Population variance → std → stderr  (matches the unbatched formula)
+    stderr = float(np.sqrt(M2 / count ** 2))
+    return float(mean), stderr
 
 
 def iqp_expectation_exact(

@@ -67,6 +67,27 @@ estimation:
   use_jax: true
   batch_size: 10
 
+training:
+  optimizer: adam
+  lr: 0.05
+  num_steps: 100
+  checkpoint_every: 10
+  loss_mode: auto
+  exact_loss_max_n: 12
+  diagnostics:
+    enabled: true
+    distribution_mode: auto
+    exact_probability_max_n: 12
+    sample_from_exact_probability_max_n: 20
+    sample_count: 4096
+    max_order: 64
+    max_subsets_per_order: 128
+    anti_concentration:
+      alphas: [0.5, 1.0, 2.0]
+      primary_alpha: 1.0
+      beta_min: 0.25
+      second_moment_threshold: 1.0
+
 qiskit:
   backend: statevector
   n_shots: [1000, 10000, 100000]
@@ -78,3 +99,13 @@ qiskit:
 
 forge:
   max_n: 12
+  timeout_sec: 60
+  mode: template_search
+  query_template: plateau_inducing_bounded
+  thresholds:
+    max_weight: 3
+    overlap_threshold: 2
+  export_instances: true
+  plateau_agreement:
+    label_source: results/scaling_ac_smoke/results.jsonl
+    ac_field: ac_passes_primary_threshold

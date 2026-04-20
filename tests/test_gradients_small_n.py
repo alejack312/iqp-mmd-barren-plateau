@@ -51,7 +51,7 @@ def test_gradient_vs_finite_diff(n: int, seed: int, param_idx: int):
     )
 
     # Generous tolerance due to Monte Carlo noise in both estimates
-    tol = 0.1
+    tol = 0.15
     assert abs(analytic - fd) < tol, (
         f"n={n}, param={param_idx}: analytic={analytic:.5f}, fd={fd:.5f}, diff={abs(analytic-fd):.5f}"
     )

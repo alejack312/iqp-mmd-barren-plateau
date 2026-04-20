@@ -44,10 +44,23 @@ qiskit:
   backend: aer_simulator
   n_shots: [1000, 10000, 100000]
   max_n: 20
+  transpile:
+    optimization_level: 1
+    save_qasm: true
   noise:
     enabled: true
-    model: combined    # depolarizing + readout
+    model: combined    # try also: amplitude_damping | thermal_relaxation | backend_preset
     error_rate: [0.0, 0.001, 0.005, 0.01]
+    # readout_rate: [0.0, 0.0001, 0.0005, 0.001]
+    # model: amplitude_damping
+    # gamma_1q: [0.0, 0.001, 0.005, 0.01]
+    # model: thermal_relaxation
+    # t1_ns: [220000]
+    # t2_ns: [140000]
+    # gate_time_1q_ns: [60]
+    # gate_time_2q_ns: [660]
+    # model: backend_preset
+    # preset: [ibm_brisbane_like, ibm_kyiv_like, noisy_nisq]
 
 output:
   format: jsonl

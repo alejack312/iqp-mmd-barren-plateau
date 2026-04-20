@@ -21,6 +21,8 @@ def make_dataset(
     """Materialize a binary dataset and JSON-serializable provenance metadata."""
     dataset_type = str(dataset_cfg.get("type", "product_bernoulli"))
     n_samples = int(dataset_cfg.get("n_samples", 1000))
+    if n_samples < 1:
+        raise ValueError(f"dataset.n_samples must be >= 1, got {n_samples}")
     rng = np.random.default_rng(seed)
 
     if dataset_type == "product_bernoulli":
@@ -77,6 +79,10 @@ def _make_binary_mixture_dataset(
     n_modes = int(cfg.get("n_modes", 4))
     noise = float(cfg.get("noise", 0.1))
     threshold = float(cfg.get("threshold", 0.0))
+    if n_modes < 1:
+        raise ValueError(f"binary_mixture.n_modes must be >= 1, got {n_modes}")
+    if noise <= 0:
+        raise ValueError(f"binary_mixture.noise must be > 0, got {noise}")
 
     centers = rng.normal(loc=0.0, scale=1.0, size=(n_modes, n))
     assignments = rng.integers(0, n_modes, size=n_samples)
@@ -86,6 +92,7 @@ def _make_binary_mixture_dataset(
         "n_modes": n_modes,
         "noise": noise,
         "threshold": threshold,
+        "latent_center_generation_policy": "standard_normal",
     }
 
 
@@ -103,6 +110,16 @@ def _make_ising_dataset(
     burn_in_sweeps = int(cfg.get("burn_in_sweeps", max(20 * n, 100)))
     thinning = int(cfg.get("thinning", 2))
     num_chains = int(cfg.get("num_chains", min(4, max(1, n_samples))))
+    if beta <= 0:
+        raise ValueError(f"ising.beta must be > 0, got {beta}")
+    if coupling_std <= 0:
+        raise ValueError(f"ising.coupling_std must be > 0, got {coupling_std}")
+    if burn_in_sweeps < 1:
+        raise ValueError(f"ising.burn_in_sweeps must be >= 1, got {burn_in_sweeps}")
+    if thinning < 1:
+        raise ValueError(f"ising.thinning must be >= 1, got {thinning}")
+    if num_chains < 1:
+        raise ValueError(f"ising.num_chains must be >= 1, got {num_chains}")
 
     adjacency, topology_metadata = _make_ising_topology(
         n=n,
@@ -163,6 +180,7 @@ def _make_ising_topology(
                     edges.append((i, j))
         metadata["average_degree_target"] = average_degree
         metadata["p_edge"] = p_edge
+        metadata["realized_average_degree"] = float(2 * len(edges) / max(n, 1))
     else:
         raise ValueError(
             f"Unsupported Ising topology {topology!r}; choose 'grid_2d' or 'erdos_renyi'"

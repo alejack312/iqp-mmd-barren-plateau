@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pytest
 import numpy as np
 
 from iqp_bp.experiments.data_factory import make_dataset
@@ -72,6 +73,54 @@ def test_make_dataset_ising_grid_is_reproducible_and_structured():
     corr = np.corrcoef(spins, rowvar=False)
     off_diag = np.abs(corr[np.triu_indices(4, k=1)])
     assert np.nanmax(off_diag) > 0.05
+
+
+def test_make_dataset_ising_grid_rejects_non_square_n():
+    cfg = {"type": "ising", "n_samples": 8, "ising": {"topology": "grid_2d"}}
+    with pytest.raises(ValueError, match="perfect-square"):
+        make_dataset(cfg, n=6, seed=0)
+
+
+def test_make_dataset_ising_rejects_invalid_topology():
+    cfg = {"type": "ising", "n_samples": 8, "ising": {"topology": "ring"}}
+    with pytest.raises(ValueError, match="Unsupported Ising topology"):
+        make_dataset(cfg, n=4, seed=0)
+
+
+def test_make_dataset_ising_erdos_renyi_records_realized_graph_statistics():
+    cfg = {
+        "type": "ising",
+        "n_samples": 16,
+        "ising": {
+            "topology": "erdos_renyi",
+            "beta": 0.5,
+            "burn_in_sweeps": 10,
+            "thinning": 1,
+            "num_chains": 1,
+        },
+    }
+    _, meta = make_dataset(cfg, n=9, seed=42)
+    assert "p_edge" in meta
+    assert "num_edges" in meta
+    assert "realized_average_degree" in meta
+    assert isinstance(meta["realized_average_degree"], float)
+    assert meta["realized_average_degree"] >= 0.0
+    assert abs(meta["realized_average_degree"] - 2 * meta["num_edges"] / 9) < 1e-10
+
+
+def test_make_dataset_binary_mixture_metadata_contract():
+    cfg = {
+        "type": "binary_mixture",
+        "n_samples": 32,
+        "binary_mixture": {"n_modes": 5, "noise": 0.3, "threshold": 0.1},
+    }
+    _, meta = make_dataset(cfg, n=8, seed=7)
+    assert meta["n_modes"] == 5
+    assert meta["noise"] == pytest.approx(0.3)
+    assert meta["threshold"] == pytest.approx(0.1)
+    assert meta["latent_center_generation_policy"] == "standard_normal"
+    assert meta["type"] == "binary_mixture"
+    assert meta["seed"] == 7
 
 
 def test_resolve_scaling_settings_expands_only_relevant_axes():

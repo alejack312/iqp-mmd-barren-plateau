@@ -23,7 +23,6 @@ from typing import Any
 
 import numpy as np
 
-from iqp_bp.hypergraph.families import make_hypergraph
 from iqp_bp.iqp.model import IQPModel
 
 log = logging.getLogger(__name__)
@@ -293,7 +292,12 @@ def load_iqp_checkpoint(path: str | Path) -> tuple[IQPModel, dict[str, Any]]:
 
     - `G`: binary generator matrix
     - `theta`: parameter vector
-    - optional metadata arrays such as `family`, `seed`, or `description`
+    - optional ``provenance_json``: JSON string encoding circuit provenance
+    - optional scalar/string metadata arrays such as `family`, `seed`, or `description`
+
+    When ``provenance_json`` is present the returned model's ``provenance``
+    attribute is populated with the parsed dict so callers can reconstruct the
+    originating circuit family without parallel bookkeeping.
     """
     file_path = Path(path)
     if file_path.suffix.lower() != ".npz":
@@ -309,6 +313,16 @@ def load_iqp_checkpoint(path: str | Path) -> tuple[IQPModel, dict[str, Any]]:
                 continue
             value = checkpoint[key]
             metadata[key] = value.tolist() if hasattr(value, "tolist") else value
+
+    # Restore structured provenance from the JSON blob if present.
+    if "provenance_json" in metadata:
+        try:
+            parsed = json.loads(metadata["provenance_json"])
+            if isinstance(parsed, dict):
+                model.provenance = parsed
+        except (json.JSONDecodeError, TypeError, ValueError):
+            pass
+
     return model, metadata
 
 
@@ -325,8 +339,11 @@ def save_iqp_checkpoint(
     - `G`: binary generator matrix
     - `theta`: parameter vector
 
-    and optional scalar/string metadata fields such as `family`, `seed`, or
-    `description`.
+    If the model carries a non-empty ``provenance`` dict it is serialized as
+    ``provenance_json`` (a Unicode string array) so :func:`load_iqp_checkpoint`
+    can reconstruct the originating circuit family on load.  Explicit
+    ``metadata`` keys are written as flat scalar/string arrays alongside it;
+    they take precedence over provenance fields with the same name.
     """
     checkpoint_path = Path(path)
     checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
@@ -335,6 +352,10 @@ def save_iqp_checkpoint(
         "G": np.asarray(model.G, dtype=np.uint8),
         "theta": np.asarray(model.theta, dtype=np.float64),
     }
+    if model.provenance:
+        arrays["provenance_json"] = np.asarray(
+            json.dumps(model.provenance, sort_keys=True)
+        )
     for key, value in (metadata or {}).items():
         arrays[str(key)] = np.asarray(value)
 
@@ -485,21 +506,16 @@ def _build_model_from_cfg(cfg: dict[str, Any]) -> tuple[IQPModel, dict[str, Any]
             p_edge = p_edge[0]
         family_kwargs = {"p_edge": p_edge}
 
-    generator_matrix = make_hypergraph(
+    model = IQPModel.from_family(
         family=family,
         n=int(n_qubits),
         m=int(n_generators),
         rng=rng,
+        rng_seed=base_seed,
         **family_kwargs,
     )
-    theta = _theta_from_cfg(cfg.get("init", {}), generator_matrix.shape[0], base_seed)
-    model = IQPModel(G=generator_matrix, theta=theta)
-    provenance = {
-        "source": "config_model",
-        "family": family,
-        "n": int(n_qubits),
-        "seed": base_seed,
-    }
+    model.theta = _theta_from_cfg(cfg.get("init", {}), model.m, base_seed)
+    provenance = {"source": "config_model", **model.provenance}
     return model, provenance
 
 
@@ -535,10 +551,14 @@ def run(cfg: dict[str, Any]) -> dict[str, Any]:
     if "checkpoint_path" in validation_cfg:
         checkpoint_path = Path(validation_cfg["checkpoint_path"])
         model, checkpoint_metadata = load_iqp_checkpoint(checkpoint_path)
+        # Merge model provenance so callers can reconstruct the circuit family
+        # without separate bookkeeping; skip the raw JSON blob (already parsed).
+        flat_metadata = {k: v for k, v in checkpoint_metadata.items() if k != "provenance_json"}
         provenance = {
             "source": "checkpoint",
             "checkpoint_path": str(checkpoint_path),
-            **checkpoint_metadata,
+            **model.provenance,
+            **flat_metadata,
         }
         result = evaluate_anti_concentration_from_model(
             model,

@@ -24,9 +24,14 @@ import numpy as np
 # Gaussian
 # ---------------------------------------------------------------------------
 
-def _gaussian_tau(sigma: float) -> float:
-    """Return the locked Gaussian Walsh decay parameter tau = tanh(1 / (4 sigma^2))."""
+def gaussian_tau(sigma: float) -> float:
+    """Return the locked Gaussian Walsh decay parameter ``tau = tanh(1 / (4 sigma^2))``."""
     return float(np.tanh(1.0 / (4.0 * sigma**2)))
+
+
+def _gaussian_tau(sigma: float) -> float:
+    """Backwards-compatible private alias for callers not yet updated."""
+    return gaussian_tau(sigma)
 
 
 def gaussian_kernel(x: np.ndarray, y: np.ndarray, sigma: float) -> float:
@@ -37,7 +42,7 @@ def gaussian_kernel(x: np.ndarray, y: np.ndarray, sigma: float) -> float:
 
 def gaussian_spectral_weights(n: int, sigma: float) -> np.ndarray:
     """Spectral weights w_G(a; sigma) proportional to tanh(1 / (4 sigma^2))^|a|."""
-    tau = _gaussian_tau(sigma)
+    tau = gaussian_tau(sigma)
     return tau ** np.arange(n + 1)
 
 
@@ -243,6 +248,61 @@ KERNEL_SAMPLERS = {
     "polynomial": polynomial_sample_a,
     "linear": linear_sample_a,
 }
+
+
+def spectral_weights_exact(kernel: str, n: int, **kernel_params) -> np.ndarray:
+    """Normalized spectral weight for each of the 2^n observables.
+
+    Returns shape (2^n,).  Entry i corresponds to the binary observable
+    a where a[j] = (i >> j) & 1 (LSB = qubit 0).  Weights sum to 1 and
+    use the same per-Hamming-weight formula as the MC samplers so the
+    two paths share one derivation.
+
+    Raises ValueError for n > 20 or unknown kernel.
+    """
+    if n > 20:
+        raise ValueError(f"spectral_weights_exact: n={n} > 20, too large to enumerate")
+
+    # Hamming weight of each integer index 0..2^n-1 (vectorized)
+    idx = np.arange(2**n, dtype=np.intp)
+    hw = np.zeros(2**n, dtype=np.intp)
+    for bit in range(n):
+        hw += (idx >> bit) & 1
+
+    # Per-Hamming-weight unnormalized values (same formula as each sampler)
+    f = np.zeros(n + 1, dtype=np.float64)
+
+    if kernel == "gaussian":
+        tau = _gaussian_tau(kernel_params.get("sigma", 1.0))
+        f[:] = tau ** np.arange(n + 1)
+    elif kernel == "laplacian":
+        sigma = kernel_params.get("sigma", 1.0)
+        for w in range(n + 1):
+            f[w] = abs(_laplacian_spectral_weight(n, w, sigma))
+    elif kernel == "polynomial":
+        degree = kernel_params.get("degree", 2)
+        constant = kernel_params.get("constant", 1.0)
+        max_w = min(degree, n)
+        for w in range(max_w + 1):
+            f[w] = abs(_poly_coeff(w, degree, constant))
+    elif kernel == "multi_scale_gaussian":
+        sigmas = kernel_params.get("sigmas", [1.0])
+        wts = kernel_params.get("weights", None)
+        wts = np.ones(len(sigmas)) / len(sigmas) if wts is None else np.asarray(wts, float)
+        wts = wts / wts.sum()
+        for sigma_i, w_i in zip(sigmas, wts):
+            tau_i = _gaussian_tau(sigma_i)
+            f += w_i * tau_i ** np.arange(n + 1)
+    elif kernel == "linear":
+        f[1] = 1.0  # only weight-1 observables have nonzero weight
+    else:
+        raise ValueError(f"spectral_weights_exact: unknown kernel {kernel!r}")
+
+    unnorm = f[hw]
+    total = float(unnorm.sum())
+    if total <= 0.0:
+        raise ValueError(f"spectral_weights_exact: kernel {kernel!r} has zero total weight for n={n}")
+    return unnorm / total
 
 
 def sample_a(

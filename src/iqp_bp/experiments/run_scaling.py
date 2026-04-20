@@ -14,6 +14,7 @@ from typing import Any
 
 import numpy as np
 
+from iqp_bp.config import persist_experiment_manifest, resolve_experiment_grid
 from iqp_bp.experiments.data_factory import make_dataset
 from iqp_bp.experiments.run_validation import (
     evaluate_anti_concentration_from_model,
@@ -24,7 +25,13 @@ from iqp_bp.hypergraph.families import make_hypergraph
 from iqp_bp.iqp.model import IQPModel
 from iqp_bp.mmd.gradients import estimate_gradient_variance
 from iqp_bp.mmd.mixture import dataset_expectations_batch
-from iqp_bp.rng import derive_seed, named_seed_streams
+from iqp_bp.rng import (
+    STREAM_ESTIMATION,
+    STREAM_THETA,
+    derive_seed,
+    experiment_stream_bundle,
+    named_seed_streams,
+)
 
 log = logging.getLogger(__name__)
 
@@ -58,33 +65,39 @@ def run(cfg: dict[str, Any]) -> None:
         "artifact_dir", "anti_concentration"
     )
 
-    settings = resolve_scaling_settings(cfg)
+    settings = resolve_experiment_grid(cfg)
+    config_path, manifest_path = persist_experiment_manifest(cfg, settings)
     total = len(settings)
     done = 0
 
+    # Design decision: per-observable MMD² diagnostic arrays (a_samples, exp_p,
+    # exp_q, contributions) are kept in-memory only if mmd2(return_details=True)
+    # is ever called from this loop.  They are NOT written to results.jsonl or any
+    # sidecar file because each array has shape (num_a_samples,) per estimate and
+    # would dwarf the compact scalar records we persist here.  If sidecar storage
+    # is needed in the future, write one JSON file per setting and store only a
+    # stable pointer (e.g. the file path) as a field in results.jsonl.
     with open(out_path, "w", encoding="utf-8") as fout:
         for setting in settings:
             setting_key = _setting_identity(setting)
-            streams = named_seed_streams(
-                base_seed,
-                ("circuit", "data"),
-                "run_scaling",
-                setting_key,
-            )
+            streams = experiment_stream_bundle(base_seed, "run_scaling", setting_key)
             n = int(setting["n"])
             family = str(setting["family"])
             kernel = str(setting["kernel"])
             init_scheme = str(setting["init_scheme"])
 
-            m = _compute_m(n, cfg["circuit"]["n_generators"])
-            G = _make_G(
+            m_requested = _compute_m(n, cfg["circuit"]["n_generators"])
+            circuit_rng_seed = streams["circuit"]
+            base_model = _make_model(
                 family=family,
                 n=n,
-                m=m,
+                m=m_requested,
                 circuit_cfg=cfg["circuit"],
-                rng=np.random.default_rng(streams["circuit"]),
+                rng=np.random.default_rng(circuit_rng_seed),
+                rng_seed=circuit_rng_seed,
                 er_p_edge=setting.get("er_p_edge"),
             )
+            G = base_model.G
             actual_m = G.shape[0]
 
             data, dataset_metadata = make_dataset(
@@ -99,7 +112,7 @@ def run(cfg: dict[str, Any]) -> None:
                     G=G,
                     data=data,
                     init_cfg=cfg["init"],
-                    seed=derive_seed(base_seed, "run_scaling", setting_key, "theta", idx),
+                    seed=derive_seed(base_seed, "run_scaling", setting_key, STREAM_THETA, idx),
                     small_angle_std=setting.get("small_angle_std"),
                 )
                 for idx in range(num_seeds)
@@ -133,11 +146,12 @@ def run(cfg: dict[str, Any]) -> None:
                     "m": int(actual_m),
                     "dataset_metadata": dataset_metadata,
                 },
+                model_provenance=base_model.provenance,
             )
 
             for param_idx in range(min(5, actual_m)):
                 rng_est = np.random.default_rng(
-                    derive_seed(base_seed, "run_scaling", setting_key, "estimation", param_idx)
+                    derive_seed(base_seed, "run_scaling", setting_key, STREAM_ESTIMATION, param_idx)
                 )
                 stats = estimate_gradient_variance(
                     G=G,
@@ -158,6 +172,7 @@ def run(cfg: dict[str, Any]) -> None:
                     **stats,
                     **kernel_params,
                     **anti_concentration_summary,
+                    "manifest_path": str(manifest_path),
                 }
                 fout.write(json.dumps(record) + "\n")
 
@@ -173,42 +188,10 @@ def run(cfg: dict[str, Any]) -> None:
             )
 
 
-def resolve_scaling_settings(cfg: dict[str, Any]) -> list[dict[str, Any]]:
-    """Resolve the explicit scalar experiment grid for the scaling runner."""
-    families = _as_list(cfg["circuit"]["family"])
-    n_qubits_list = _as_list(cfg["circuit"]["n_qubits"])
-    kernels = _as_list(cfg["kernel"]["type"])
-    init_schemes = _as_list(cfg["init"]["scheme"])
-
-    settings: list[dict[str, Any]] = []
-    for family, kernel, init_scheme, n in product(
-        families,
-        kernels,
-        init_schemes,
-        n_qubits_list,
-    ):
-        for bandwidth, er_p_edge, small_angle_std in product(
-            _bandwidth_values_for_kernel(kernel, cfg["kernel"]),
-            _erdos_renyi_values_for_family(family, cfg["circuit"]),
-            _small_angle_values_for_init(init_scheme, cfg["init"]),
-        ):
-            settings.append(
-                {
-                    "family": family,
-                    "kernel": kernel,
-                    "init_scheme": init_scheme,
-                    "n": int(n),
-                    "bandwidth": bandwidth,
-                    "er_p_edge": er_p_edge,
-                    "small_angle_std": small_angle_std,
-                    "dataset_type": str(cfg["dataset"].get("type", "product_bernoulli")),
-                }
-            )
-    return settings
-
-
-def _as_list(val):
-    return val if isinstance(val, list) else [val]
+# Backwards-compatible alias: resolve_scaling_settings was moved to
+# config.resolve_experiment_grid. Re-export it here so existing callers and
+# tests continue to work without change.
+resolve_scaling_settings = resolve_experiment_grid
 
 
 def _compute_m(n: int, formula: str) -> int:
@@ -217,6 +200,34 @@ def _compute_m(n: int, formula: str) -> int:
     if isinstance(formula, int):
         return formula
     return max(1, int(eval(formula, {"n": n, "log": math.log})))
+
+
+def _extract_family_kwargs(
+    family: str,
+    circuit_cfg: dict,
+    *,
+    er_p_edge: float | None = None,
+) -> dict:
+    """Return family-specific constructor kwargs extracted from the circuit config."""
+    if family == "bounded_degree":
+        return circuit_cfg.get("bounded_degree", {})
+    if family == "erdos_renyi":
+        default_p = circuit_cfg.get("erdos_renyi", {}).get("p_edge", 0.1)
+        if isinstance(default_p, list):
+            default_p = default_p[0]
+        return {"p_edge": er_p_edge if er_p_edge is not None else default_p}
+    if family == "lattice":
+        return {
+            "dimension": circuit_cfg.get("lattice", {}).get("dimension", 1),
+            "range_": circuit_cfg.get("lattice", {}).get("range", 1),
+        }
+    if family == "dense":
+        return {"expected_weight": circuit_cfg.get("dense", {}).get("expected_weight", 0.5)}
+    if family == "community":
+        return circuit_cfg.get("community", {})
+    if family == "symmetric":
+        return {"parity": circuit_cfg.get("symmetric", {}).get("parity", "even")}
+    return {}
 
 
 def _make_G(
@@ -228,26 +239,25 @@ def _make_G(
     *,
     er_p_edge: float | None = None,
 ):
-    kwargs = {}
-    if family == "bounded_degree":
-        kwargs = circuit_cfg.get("bounded_degree", {})
-    elif family == "erdos_renyi":
-        default_p = circuit_cfg.get("erdos_renyi", {}).get("p_edge", 0.1)
-        if isinstance(default_p, list):
-            default_p = default_p[0]
-        kwargs = {"p_edge": er_p_edge if er_p_edge is not None else default_p}
-    elif family == "lattice":
-        kwargs = {
-            "dimension": circuit_cfg.get("lattice", {}).get("dimension", 1),
-            "range_": circuit_cfg.get("lattice", {}).get("range", 1),
-        }
-    elif family == "dense":
-        kwargs = {"expected_weight": circuit_cfg.get("dense", {}).get("expected_weight", 0.5)}
-    elif family == "community":
-        kwargs = circuit_cfg.get("community", {})
-    elif family == "symmetric":
-        kwargs = {"parity": circuit_cfg.get("symmetric", {}).get("parity", "even")}
+    kwargs = _extract_family_kwargs(family, circuit_cfg, er_p_edge=er_p_edge)
     return make_hypergraph(family=family, n=n, m=m, rng=rng, **kwargs)
+
+
+def _make_model(
+    family: str,
+    n: int,
+    m: int,
+    circuit_cfg: dict,
+    rng,
+    rng_seed: int | None = None,
+    *,
+    er_p_edge: float | None = None,
+) -> IQPModel:
+    """Build an :class:`IQPModel` via :meth:`IQPModel.from_family`, preserving provenance."""
+    kwargs = _extract_family_kwargs(family, circuit_cfg, er_p_edge=er_p_edge)
+    return IQPModel.from_family(
+        family=family, n=n, m=m, rng=rng, rng_seed=rng_seed, **kwargs
+    )
 
 
 def _make_theta(
@@ -318,6 +328,7 @@ def _summarize_anti_concentration(
     artifact_dir: Path,
     artifact_stem: str,
     provenance: dict[str, Any],
+    model_provenance: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Return compact anti-concentration fields for one scaling setting."""
     if not enabled:
@@ -338,7 +349,7 @@ def _summarize_anti_concentration(
             "anti_concentration_reason": "missing_theta_seed",
         }
 
-    model = IQPModel(G=G, theta=theta_list[0])
+    model = IQPModel(G=G, theta=theta_list[0], provenance=model_provenance or {})
     result = evaluate_anti_concentration_from_model(
         model,
         provenance={
@@ -361,23 +372,20 @@ def _summarize_anti_concentration(
 
     checkpoint_path = None
     if export_checkpoint:
-        checkpoint_metadata = {
-            key: value
-            for key, value in provenance.items()
-            if key != "dataset_metadata"
-        }
-        if "dataset_metadata" in provenance:
-            checkpoint_metadata["dataset_metadata_json"] = json.dumps(
-                provenance["dataset_metadata"],
-                sort_keys=True,
-            )
+        # model.provenance (family, n, m_requested, m_generated, rng_seed, …) is
+        # serialized automatically by save_iqp_checkpoint as provenance_json.
+        # We only add experiment-level fields not already captured in provenance.
         checkpoint_path = save_iqp_checkpoint(
             model,
             checkpoints_dir / _checkpoint_name(family=family, init_scheme=init_scheme, kernel=kernel, n=n),
             metadata={
                 "theta_seed_index": 0,
                 "source": "run_scaling",
-                **checkpoint_metadata,
+                "kernel": kernel,
+                "init_scheme": init_scheme,
+                "dataset_metadata_json": json.dumps(
+                    provenance.get("dataset_metadata", {}), sort_keys=True
+                ),
             },
         )
 
@@ -412,31 +420,6 @@ def _checkpoint_name(*, family: str, init_scheme: str, kernel: str, n: int) -> s
     return f"{family}_n{n}_{kernel}_{init_scheme}_seed0.npz"
 
 
-def _bandwidth_values_for_kernel(kernel: str, kernel_cfg: dict[str, Any]) -> list[float | None]:
-    if kernel in {"gaussian", "laplacian"}:
-        return [float(value) for value in _as_list(kernel_cfg.get("bandwidth", [1.0]))]
-    return [None]
-
-
-def _erdos_renyi_values_for_family(
-    family: str,
-    circuit_cfg: dict[str, Any],
-) -> list[float | None]:
-    if family == "erdos_renyi":
-        return [
-            float(value)
-            for value in _as_list(circuit_cfg.get("erdos_renyi", {}).get("p_edge", [0.1]))
-        ]
-    return [None]
-
-
-def _small_angle_values_for_init(
-    init_scheme: str,
-    init_cfg: dict[str, Any],
-) -> list[float | None]:
-    if init_scheme == "small_angle":
-        return [float(value) for value in _as_list(init_cfg.get("small_angle", {}).get("std", [0.1]))]
-    return [None]
 
 
 def _record_setting_fields(setting: dict[str, Any]) -> dict[str, Any]:

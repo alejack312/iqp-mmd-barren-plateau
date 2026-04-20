@@ -46,6 +46,39 @@ This package depends on two Xanadu libraries:
 - [IQPopt](https://github.com/XanaduAI/iqpopt) — IQP circuit optimization
 - [qml-benchmarks](https://github.com/XanaduAI/qml-benchmarks) — Classical baseline models (RBM, DeepEBM)
 
+### Optional: Forge (formal modeling)
+
+Some modeling work in this project uses [Forge](https://forge-fm.github.io/forge-documentation/5.0/) (Brown's formal modeling tool built on Racket). Install once per machine — not vendored into this repo.
+
+Prerequisites:
+- [Racket](https://download.racket-lang.org/all-versions.html) 8.7 or later
+- [Java](https://www.oracle.com/java/technologies/downloads/) 11 or later
+
+Install (pinned to v5.2):
+
+```bash
+# Clone outside this repo (any path you prefer)
+git clone https://github.com/tnelson/forge ~/forge
+cd ~/forge
+git checkout v5.2
+raco pkg install ./forge   # first install only
+# To update later:  git pull && raco setup forge
+```
+
+VSCode extension (optional but recommended):
+
+```bash
+code --install-extension siddharthaprasad.forge-fm
+```
+
+Verify:
+
+```bash
+echo '#lang forge' > test.frg && racket test.frg   # should exit 0
+```
+
+Windows note: run the above from Git Bash, WSL, VSCode's terminal, or DrRacket — not `cmd` or PowerShell.
+
 ## Quick Start
 
 ### Python API

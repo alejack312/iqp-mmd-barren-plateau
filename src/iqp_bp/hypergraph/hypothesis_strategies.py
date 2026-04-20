@@ -23,6 +23,11 @@ def _square_n_values(n_min: int, n_max: int) -> list[int]:
     return [side * side for side in range(side_min, side_max + 1)]
 
 
+def _num_outcomes_from_n(n: int) -> int:
+    """Return the exact probability-vector length for ``n`` qubits."""
+    return 2**n
+
+
 def materialize_theta(
     G: np.ndarray,
     data: np.ndarray,
@@ -344,4 +349,67 @@ def mmd_instance(draw):
         "theta": theta,
         "data": data
     }
-    
+
+
+@st.composite
+def anti_concentration_probability_vector(
+    draw,
+    n_min: int = 1,
+    n_max: int = 5,
+) -> np.ndarray:
+    """Draw a valid probability vector over ``{0,1}^n``.
+
+    The strategy mixes structured edge cases with generic normalized non-negative
+    vectors so the anti-concentration tests see both exact corner cases and
+    typical dense distributions.
+    """
+    n = draw(st.integers(min_value=n_min, max_value=n_max))
+    num_outcomes = _num_outcomes_from_n(n)
+    mode = draw(st.sampled_from(["uniform", "delta", "normalized_raw"]))
+
+    if mode == "uniform":
+        return np.full(num_outcomes, 1.0 / num_outcomes, dtype=np.float64)
+
+    if mode == "delta":
+        support_index = draw(st.integers(min_value=0, max_value=num_outcomes - 1))
+        probabilities = np.zeros(num_outcomes, dtype=np.float64)
+        probabilities[support_index] = 1.0
+        return probabilities
+
+    raw = np.asarray(
+        draw(
+            arrays(
+                dtype=np.float64,
+                shape=(num_outcomes,),
+                elements=st.floats(
+                    min_value=0.0,
+                    max_value=1.0,
+                    allow_nan=False,
+                    allow_infinity=False,
+                ),
+            )
+        ),
+        dtype=np.float64,
+    )
+    raw[0] += 1.0
+    return raw / raw.sum()
+
+
+@st.composite
+def anti_concentration_binary_samples(
+    draw,
+    n_min: int = 1,
+    n_max: int = 6,
+    num_samples_min: int = 1,
+    num_samples_max: int = 128,
+) -> np.ndarray:
+    """Draw a binary sample matrix suitable for the empirical histogram path."""
+    n = draw(st.integers(min_value=n_min, max_value=n_max))
+    num_samples = draw(st.integers(min_value=num_samples_min, max_value=num_samples_max))
+    return draw(
+        arrays(
+            dtype=np.uint8,
+            shape=(num_samples, n),
+            elements=st.integers(min_value=0, max_value=1),
+        )
+    )
