@@ -1,0 +1,76 @@
+# configs/experiments/scaling_ac_diverse.yaml
+# Scaling sweep designed to exercise both AC-pass and AC-fail rows.
+# Purpose: label source for F3 plateau_agreement Forge runs.
+#
+# Rationale for the sweep axes:
+#  - uniform init on an IQP circuit sends parameters over [-pi, pi], which
+#    tends to produce a near-uniform output distribution -> high beta_hat(1.0)
+#    -> ac_passes_primary_threshold == True -> PlateauAbsent.
+#  - small_angle init with std=0.01 keeps parameters tiny, so the circuit is
+#    close to identity and the output stays concentrated near |0..0> -> low
+#    beta_hat(1.0) -> ac_passes_primary_threshold == False -> PlateauObserved.
+#  - Multiple families exercise structural diversity so the agree/disagree
+#    table has meaningful rows across the (family, init) cross product.
+# n is capped at 8 so the exact-AC path (anti_concentration.max_n: 8) covers
+# every row.
+
+experiment:
+  name: scaling_ac_diverse
+  description: "Scaling sweep with uniform + small_angle init to produce both AC-pass and AC-fail rows for F3 validation"
+  seed: 23
+  output_dir: results/scaling_ac_diverse/
+  log_level: INFO
+
+circuit:
+  family: [product_state, complete_graph, erdos_renyi, bounded_degree]
+  n_qubits: [4, 6, 8]
+  n_generators: "n"
+  lattice:
+    dimension: 2
+    range: 1
+  erdos_renyi:
+    p_edge: [2.0]
+  bounded_degree:
+    max_weight: 3
+    max_degree: 4
+
+kernel:
+  type: [gaussian]
+  bandwidth: [1.0]
+
+init:
+  scheme: [uniform, small_angle]
+  uniform:
+    low: -3.14159265
+    high: 3.14159265
+  small_angle:
+    std: [0.01]
+
+dataset:
+  type: product_bernoulli
+  n_samples: 128
+
+estimation:
+  num_a_samples: 8
+  num_z_samples: 32
+  num_seeds: 2
+  use_jax: true
+  batch_size: 2
+
+anti_concentration:
+  enabled: true
+  max_n: 8
+  alphas: [0.5, 1.0, 2.0]
+  primary_alpha: 1.0
+  beta_min: 0.25
+  second_moment_threshold: 1.0
+  export_checkpoint: true
+  checkpoint_dir: checkpoints
+
+output:
+  format: jsonl
+  save_raw: false
+  figures:
+    enabled: false
+    format: pdf
+    dpi: 100

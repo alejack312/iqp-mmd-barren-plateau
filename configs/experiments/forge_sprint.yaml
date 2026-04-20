@@ -44,9 +44,12 @@ estimation:
 
 forge:
   max_n: 12
-  target_property: overlap_threshold   # find min n where generator overlap > threshold
+  query_template: plateau_inducing_bounded
   timeout_sec: 120
-  export_instances: true   # serialize found instances to forge/runs/
+  thresholds:
+    max_weight: 3
+    overlap_threshold: 2
+  export_instances: true
 
 output:
   format: jsonl

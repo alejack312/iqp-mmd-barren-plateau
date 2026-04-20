@@ -1,0 +1,73 @@
+experiment:
+  name: forge_plateau_diverse
+  description: "F3 plateau-agreement over the diversified scaling_ac_diverse label source"
+  seed: 42
+  output_dir: results/forge_plateau_diverse/
+  log_level: INFO
+
+circuit:
+  family: product_state
+  n_qubits: [4]
+  n_generators: "n"
+  lattice:
+    dimension: 2
+    range: 1
+  erdos_renyi:
+    p_edge: [2.0]
+
+kernel:
+  type: gaussian
+  bandwidth: [1.0]
+  multi_scale_gaussian:
+    sigmas: [0.5, 1.0, 2.0]
+    weights: null
+
+init:
+  scheme: uniform
+  uniform:
+    low: -3.14159265
+    high: 3.14159265
+  small_angle:
+    std: [0.1]
+  data_dependent:
+    dataset: ising
+
+dataset:
+  type: product_bernoulli
+  n_samples: 100
+  ising:
+    beta: 1.0
+    coupling_std: 1.0
+    topology: grid_2d
+  binary_mixture:
+    n_modes: 4
+    noise: 0.1
+    threshold: 0.0
+
+estimation:
+  num_a_samples: 8
+  num_z_samples: 8
+  num_seeds: 1
+  use_jax: true
+  batch_size: 1
+
+forge:
+  max_n: 12
+  timeout_sec: 60
+  mode: plateau_agreement
+  query_template: plateau_agreement
+  thresholds:
+    max_weight: 3
+    overlap_threshold: 2
+  export_instances: true
+  plateau_agreement:
+    label_source: results/scaling_ac_diverse/results.jsonl
+    ac_field: ac_passes_primary_threshold
+
+output:
+  format: jsonl
+  save_raw: false
+  figures:
+    enabled: false
+    format: pdf
+    dpi: 100
