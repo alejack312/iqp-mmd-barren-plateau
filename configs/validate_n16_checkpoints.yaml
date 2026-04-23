@@ -1,0 +1,28 @@
+# Phase 2 (n=16 validation) harness config.
+# Consumed by scripts/validate_n16.py.
+#
+# Decisions locked by .planning/phases/02-n16-validation/02-01-PLAN.md:
+#   - 2D_ising spin_sym=True, 8_blobs spin_sym=False (also authoritative in
+#     configs/pauli_estimator_datasets.yaml).
+#   - MC budget: num_pauli_samples=2000, n_expval_samples=2000.
+#   - Per-k num_subsets: {1: 16 (enumerate all C(16,1)), 2: 120 (enumerate all
+#     C(16,2)), 4: 256 (subsample from 1820)}.
+#   - 3 seeds: 666, 667, 668.
+checkpoints:
+  - dataset: 2D_ising
+    ckpt: results/iqp_mmd_ac_investigation/checkpoints/ising_n16_iters1000_seed666.npz
+    spin_sym: true
+  - dataset: 8_blobs
+    ckpt: results/iqp_mmd_ac_investigation/checkpoints/spin_blobs_n16_iters1000_seed666.npz
+    spin_sym: false
+seeds: [666, 667, 668]
+val01:
+  num_pauli_samples: 2000
+  n_expval_samples: 2000
+val02:
+  k_values: [1, 2, 4]
+  num_subsets: {1: 16, 2: 120, 4: 256}
+  n_expval_samples: 2000
+output:
+  per_seed_root: results/pauli_estimator_validation_n16
+  combined_json: results/pauli_estimator_validation_n16.json
