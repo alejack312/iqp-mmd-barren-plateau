@@ -139,6 +139,112 @@ def _coerce_num_subsets(raw: dict) -> dict[int, int]:
 
 
 # --------------------------------------------------------------------------
+# Aggregation (Task 3)
+# --------------------------------------------------------------------------
+def aggregate_criterion(raw_rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """Aggregate a group of 1-or-more per-seed rows for a single (dataset,
+    criterion) pair into a single criterion record.
+
+    - exact       = mean of per-seed exacts (should be ~identical).
+    - estimate    = mean of per-seed estimates.
+    - sigma       = sqrt(mean(seed_sigma ** 2) / n)  if n > 1
+                    else the single seed_sigma.
+                    (Pooled SE under independent-seed assumption.)
+    - empirical_std_across_seeds = np.std(estimates, ddof=1) for n >= 2
+                                  else None.
+    - z_score, within_2sigma, tier derived from aggregate.
+    """
+    assert len(raw_rows) >= 1
+    first = raw_rows[0]
+    dataset = first["dataset"]
+    criterion = first["criterion"]
+    k = first.get("k")
+
+    exacts    = np.array([float(r["exact"])    for r in raw_rows], dtype=np.float64)
+    estimates = np.array([float(r["estimate"]) for r in raw_rows], dtype=np.float64)
+    sigmas    = np.array([float(r["sigma"])    for r in raw_rows], dtype=np.float64)
+
+    exact_mean = float(exacts.mean())
+    if float(exacts.std()) > 1e-9:
+        log.warning(
+            "criterion=%s dataset=%s: per-seed exact disagreement (std=%.3e); "
+            "this should be deterministic. Values=%s",
+            criterion, dataset, float(exacts.std()), exacts.tolist(),
+        )
+    estimate_mean = float(estimates.mean())
+
+    n_seeds = len(raw_rows)
+    if n_seeds > 1:
+        sigma_pool = float(np.sqrt(np.mean(sigmas ** 2) / n_seeds))
+        empirical_std = float(np.std(estimates, ddof=1))
+    else:
+        sigma_pool = float(sigmas[0])
+        empirical_std = None
+
+    if sigma_pool > 0.0:
+        z_score = (estimate_mean - exact_mean) / sigma_pool
+    else:
+        z_score = float("inf") if (estimate_mean != exact_mean) else 0.0
+
+    tier = tier_for(z_score)
+    within_2s = bool(abs(z_score) <= 2.0)
+
+    # Budget block: val01 vs val02 shapes differ.
+    is_val01 = criterion == "val01_scaled_ss"
+    if is_val01:
+        # val01 raw rows carry num_pauli_samples / n_expval_samples implicitly via
+        # the CLI invocation; we surface them from the config in meta, but record
+        # per-criterion via the argv they ran under.
+        budget: dict[str, Any] = {
+            "num_pauli_samples": None,  # filled in by main() from cfg
+            "n_expval_samples": None,
+        }
+    else:
+        budget = {
+            "n_expval_samples": int(first.get("n_expval_samples", 0)),
+            "num_subsets": int(first.get("num_subsets", 0)),
+            "k": int(k) if k is not None else None,
+        }
+
+    wall_time_s = float(sum(float(r.get("wall_time_s", 0.0)) for r in raw_rows))
+
+    per_seed = [
+        {
+            "seed":     int(r["seed"]),
+            "exact":    float(r["exact"]),
+            "estimate": float(r["estimate"]),
+            "sigma":    float(r["sigma"]),
+        }
+        for r in raw_rows
+    ]
+
+    return {
+        "dataset": dataset,
+        "criterion": criterion,
+        "k": (int(k) if k is not None else None),
+        "exact": exact_mean,
+        "estimate": estimate_mean,
+        "sigma": sigma_pool,
+        "empirical_std_across_seeds": empirical_std,
+        "z_score": float(z_score),
+        "within_2sigma": within_2s,
+        "tier": tier,
+        "budget": budget,
+        "wall_time_s": wall_time_s,
+        "per_seed": per_seed,
+    }
+
+
+def _group_rows(rows: list[dict[str, Any]]) -> dict[tuple[str, str], list[dict[str, Any]]]:
+    """Group raw per-seed rows by (dataset, criterion)."""
+    groups: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    for r in rows:
+        key = (r["dataset"], r["criterion"])
+        groups.setdefault(key, []).append(r)
+    return groups
+
+
+# --------------------------------------------------------------------------
 # VAL-01: subprocess the existing validate CLI and parse its JSON output.
 # --------------------------------------------------------------------------
 def run_val01(
@@ -469,11 +575,68 @@ def main(argv: list[str] | None = None) -> int:
                 rows = run_val02(ds, ckpt_path, spin_sym, seed, cfg)
                 val02_rows.extend(rows)
 
-    # --- Stub combined JSON (Task 3 will replace with aggregated shape). ---
+    # --- Aggregate raw rows -> per-criterion records (Task 3). ---
+    criteria: list[dict[str, Any]] = []
+
+    for key, rows in _group_rows(val01_rows).items():
+        crit = aggregate_criterion(rows)
+        # val01 budget: populate from cfg (CLI argv carries these, but we
+        # surface them at criterion-level for downstream readers).
+        crit["budget"]["num_pauli_samples"] = int(cfg["val01"]["num_pauli_samples"])
+        crit["budget"]["n_expval_samples"]  = int(cfg["val01"]["n_expval_samples"])
+        criteria.append(crit)
+
+    for key, rows in _group_rows(val02_rows).items():
+        criteria.append(aggregate_criterion(rows))
+
+    # Stable criterion ordering: dataset asc, then criterion name asc
+    # (val01_scaled_ss before val02_mean_tv_k*).
+    criteria.sort(key=lambda c: (c["dataset"], c["criterion"]))
+
+    overall_tier = worst_tier(c["tier"] for c in criteria) if criteria else "pass"
+    overall_pass = all(c["tier"] != "fail" for c in criteria)
+
+    # Log per-criterion summary.
+    for c in criteria:
+        log.info(
+            "AGG dataset=%s criterion=%s est=%.6f exact=%.6f sigma=%.6f z=%+.2f tier=%s",
+            c["dataset"], c["criterion"],
+            c["estimate"], c["exact"], c["sigma"], c["z_score"], c["tier"],
+        )
+
+    # Collect CLI invocations (VAL-01 subprocess argvs) from val01 raw rows
+    # for provenance. val02 has no subprocess.
+    cli_invocations = [
+        {"dataset": r["dataset"], "seed": int(r["seed"]), "argv": r["cli_argv"]}
+        for r in val01_rows if "cli_argv" in r
+    ]
+
+    # Versions (best-effort; never crash provenance collection).
+    versions: dict[str, str] = {"python": sys.version}
+    try:
+        import jax as _jax
+        versions["jax"] = str(getattr(_jax, "__version__", "unknown"))
+    except Exception:
+        versions["jax"] = "unavailable"
+    try:
+        import iqpopt as _iqpopt
+        versions["iqpopt"] = str(getattr(_iqpopt, "__version__", "unknown"))
+    except Exception:
+        versions["iqpopt"] = "unavailable"
+    try:
+        versions["numpy"] = str(np.__version__)
+    except Exception:
+        versions["numpy"] = "unavailable"
+
     payload = {
         "meta": {
             "harness": "scripts/validate_n16.py",
-            "config_path": str(args.config.relative_to(REPO_ROOT) if args.config.is_absolute() else args.config),
+            "config_path": str(
+                args.config.relative_to(REPO_ROOT)
+                if args.config.is_absolute()
+                else args.config
+            ),
+            "cli_invocations": cli_invocations,
             "checkpoints": [
                 {
                     "dataset": ck["dataset"],
@@ -486,31 +649,45 @@ def main(argv: list[str] | None = None) -> int:
                 "val01": dict(cfg["val01"]),
                 "val02": {
                     "k_values": list(cfg["val02"]["k_values"]),
-                    "num_subsets": {str(k): int(v) for k, v in cfg["val02"]["num_subsets"].items()},
+                    "num_subsets": {
+                        str(k): int(v)
+                        for k, v in cfg["val02"]["num_subsets"].items()
+                    },
                     "n_expval_samples": int(cfg["val02"]["n_expval_samples"]),
                 },
             },
             "seeds": list(cfg["seeds"]),
             "git": git_state(),
+            "versions": versions,
             "timestamp_utc": datetime.now(timezone.utc).isoformat(),
             "notes": {
                 "k_subset_alignment": "unaligned_same_distribution",
-                "exact_mk_routing": "IQPModel.probability_vector_exact for BOTH datasets at n=16 (n<=20 guard)",
-                "val02_sigma_source": "estimator per-k plug-in SE (MarginalResult.per_k[k]['sigma'])",
+                "exact_mk_routing": (
+                    "IQPModel.probability_vector_exact for BOTH datasets at "
+                    "n=16 (n<=20 guard)"
+                ),
+                "val02_sigma_source": (
+                    "estimator per-k plug-in SE (MarginalResult.per_k[k]['sigma'])"
+                ),
             },
         },
-        "raw_val01_rows": val01_rows,
-        "raw_val02_rows": val02_rows,
-        "overall_pass": None,
-        "overall_tier": None,
-        "note": "TODO: val02 loop + aggregation + overall tier (Tasks 2, 3).",
+        "criteria": criteria,
+        "overall_pass": bool(overall_pass),
+        "overall_tier": overall_tier,
     }
 
     with open(combined_json, "w", encoding="utf-8") as f:
         json.dump(payload, f, indent=2, default=str)
     log.info("wrote combined JSON: %s", combined_json)
 
-    return 0
+    log.info(
+        "OVERALL: %s (overall_pass=%s, %d criteria aggregated)",
+        overall_tier, bool(overall_pass), len(criteria),
+    )
+
+    # Exit code: 0 on pass or warn; 1 on any fail.
+    any_fail = any(c["tier"] == "fail" for c in criteria)
+    return 1 if any_fail else 0
 
 
 if __name__ == "__main__":
