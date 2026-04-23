@@ -251,14 +251,16 @@ def _build_parser() -> argparse.ArgumentParser:
     pe.set_defaults(func=_cmd_estimate)
 
     # --- validate ---
+    _validate_help = (
+        "Compare estimator to exact ground truth (Phase 2 harness). "
+        "NOTE: the --no-spin-sym path uses IQPModel.probability_vector_exact, "
+        "which is O(2**n) memory and REQUIRES n<=20. For n>20, use --spin-sym "
+        "so ground truth routes through iqpopt.probs(theta) instead."
+    )
     pv = sub.add_parser(
         "validate",
-        help=(
-            "Compare estimator to exact ground truth (Phase 2 harness). "
-            "NOTE: the --no-spin-sym path uses IQPModel.probability_vector_exact, "
-            "which is O(2**n) memory and REQUIRES n<=20. For n>20, use --spin-sym "
-            "so ground truth routes through iqpopt.probs(theta) instead."
-        ),
+        help=_validate_help,
+        description=_validate_help,
     )
     pv.add_argument("--ckpt", type=Path, required=True)
     pv.add_argument("--dataset", choices=DATASET_NAMES, default=None,
