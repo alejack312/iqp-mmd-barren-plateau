@@ -83,6 +83,19 @@ def _open_progress_log(out_dir: Path) -> None:
     )
 
 
+def _rel_to_repo(path: Path) -> str:
+    """Return path as a string relative to REPO_ROOT when possible, else absolute str.
+
+    Users may pass --out as a relative path; resolve to absolute before attempting
+    relative_to(REPO_ROOT) so the JSON schema field is always well-formed.
+    """
+    abs_path = Path(path).resolve()
+    try:
+        return str(abs_path.relative_to(REPO_ROOT))
+    except ValueError:
+        return str(abs_path)
+
+
 def _sha256_of_file(path: Path) -> str:
     h = hashlib.sha256()
     with open(path, "rb") as f:
@@ -183,7 +196,7 @@ def _build_estimator_json(
             "effective_m": int(ac.effective_m),
             "max_squared_expval": float(ac.max_squared_expval),
             "max_support": list(map(int, ac.max_support)),
-            "raw_Y_samples_path": str(raw_Y_path.relative_to(REPO_ROOT)),
+            "raw_Y_samples_path": _rel_to_repo(raw_Y_path),
         },
         "marginals": {
             str(k): {
@@ -274,9 +287,311 @@ def _build_parser() -> argparse.ArgumentParser:
     return p
 
 
-def _cmd_estimate(args: argparse.Namespace) -> int: raise NotImplementedError  # Task 3
-def _cmd_validate(args: argparse.Namespace) -> int: raise NotImplementedError  # Task 3
-def _cmd_all(args: argparse.Namespace) -> int: raise NotImplementedError       # Task 3
+def _namespace_to_jsonable(args: argparse.Namespace, extra: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Convert argparse Namespace into a JSON-serializable dict (paths -> str)."""
+    raw = vars(args).copy()
+    raw.pop("func", None)
+    for k, v in list(raw.items()):
+        if isinstance(v, Path):
+            raw[k] = str(v)
+    if extra:
+        raw.update(extra)
+    return raw
+
+
+def _cmd_estimate(args: argparse.Namespace) -> int:
+    # 1. Load YAML config and resolve per-dataset defaults.
+    cfg = _load_dataset_config(args.config)
+    if args.dataset not in cfg["datasets"]:
+        print(f"ERROR: dataset {args.dataset!r} missing from {args.config}")
+        return 2
+    dataset_cfg = cfg["datasets"][args.dataset]
+
+    # 2. Resolve max_weight / spin_sym -- CLI overrides YAML.
+    max_weight = args.max_weight if args.max_weight is not None else int(dataset_cfg["max_weight"])
+    spin_sym = args.spin_sym if args.spin_sym is not None else bool(dataset_cfg["spin_sym"])
+
+    # 3. Resolve paths.
+    ckpt = args.ckpt if args.ckpt is not None else DEFAULT_OUT_ROOT / args.dataset / "checkpoint.npz"
+    out_dir = args.out if args.out is not None else DEFAULT_OUT_ROOT / args.dataset
+    out_dir = Path(out_dir)
+
+    # 4. Open progress log + banner.
+    _open_progress_log(out_dir)
+    print(f"=== estimate dataset={args.dataset} ===")
+    print(f"  ckpt={ckpt}")
+    print(f"  out_dir={out_dir}")
+    print(f"  resolved: max_weight={max_weight}, spin_sym={spin_sym}")
+    print(f"  num_pauli_samples={args.num_pauli_samples}  n_expval_samples={args.n_expval_samples}")
+    print(f"  k_values={args.k_values}  subsets_per_order={args.subsets_per_order}  seed={args.seed}")
+
+    # 5. Build IqpSimulator from checkpoint.
+    sim, theta, model_bp, meta = _build_simulator_from_checkpoint(
+        ckpt, max_weight, spin_sym, dataset_cfg.get("n_qubits")
+    )
+    print(f"  sim.n_qubits={sim.n_qubits}  theta.shape={theta.shape}  checkpoint_meta={meta}")
+
+    # 6. Load empirical target for marginals (best-effort).
+    try:
+        csv_path = DatasetPaths(base_dir=REPO_ROOT).train_path(args.dataset)
+        target_empirical = load_csv_dataset(csv_path, delimiter=",", header=None).astype(np.uint8)
+        # Defensive: some datasets may ship {-1, +1} encoded -- normalize to {0, 1}.
+        if target_empirical.min() < 0:
+            target_empirical = ((target_empirical + 1) // 2).astype(np.uint8)
+        assert target_empirical.shape[1] == sim.n_qubits, (
+            f"target_empirical has {target_empirical.shape[1]} columns but simulator has {sim.n_qubits} qubits"
+        )
+        print(f"  target_empirical loaded from {csv_path}  shape={target_empirical.shape}")
+    except Exception as e:
+        print(f"WARN: empirical target load failed ({type(e).__name__}: {e}); skipping marginals")
+        target_empirical = None
+
+    # 7. Run AC estimator.
+    t0 = time.perf_counter()
+    print("  running pauli_ac_estimator ...")
+    ac = pauli_ac_estimator(
+        sim, theta,
+        num_pauli_samples=args.num_pauli_samples,
+        n_expval_samples=args.n_expval_samples,
+        seed=args.seed,
+    )
+    print(f"  AC done  scaled_ss_hat={ac.scaled_ss_hat:.6f}  sigma={ac.sigma:.6f}  "
+          f"effective_m={ac.effective_m}  max_sq_expval={ac.max_squared_expval:.6e}")
+
+    # 8. Run marginal mismatch if target available.
+    if target_empirical is not None:
+        print("  running pauli_marginal_mismatch ...")
+        marginals = pauli_marginal_mismatch(
+            sim, theta, target_empirical,
+            k_values=tuple(args.k_values),
+            num_subsets=args.subsets_per_order,
+            n_expval_samples=args.n_expval_samples,
+            seed=args.seed,
+        )
+        for k, stats in marginals.per_k.items():
+            print(f"  marginals k={k}: mean_tv={stats['mean_tv']:.4f} +- "
+                  f"{stats['sigma']:.4f}  max_tv={stats['max_tv']:.4f}  n_subsets={stats['num_subsets']}")
+    else:
+        marginals = MarginalResult(per_k={}, metadata={"error": "target_empirical unavailable"})
+
+    wall = time.perf_counter() - t0
+
+    # 9. Dump raw Y samples to sibling .npy.
+    raw_Y_path = out_dir / "raw_Y.npy"
+    np.save(raw_Y_path, ac.raw_Y_samples)
+    print(f"  raw Y samples -> {raw_Y_path}")
+
+    # 10. Assemble JSON payload.
+    cfg_blob = _namespace_to_jsonable(
+        args,
+        extra={
+            "resolved_max_weight": int(max_weight),
+            "resolved_spin_sym": bool(spin_sym),
+            "resolved_ckpt": str(ckpt),
+            "resolved_out_dir": str(out_dir),
+        },
+    )
+    tag = f"estimate/{args.dataset}"
+    payload = _build_estimator_json(tag, cfg_blob, ac, marginals, ckpt, raw_Y_path, wall)
+
+    out_json = out_dir / "estimator.json"
+    with open(out_json, "w", encoding="utf-8") as f:
+        json.dump(payload, f, indent=2, default=str)
+    print(f"  wrote {out_json}")
+    print(f"scaled_ss_hat = {ac.scaled_ss_hat:.4f} +- {ac.sigma:.4f}  (wall={wall:.1f}s)")
+    return 0
+
+
+def _cmd_validate(args: argparse.Namespace) -> int:
+    # Resolve max_weight / spin_sym. If --dataset provided, use YAML defaults as fallback.
+    dataset_cfg: dict[str, Any] | None = None
+    if args.dataset is not None:
+        cfg = _load_dataset_config(args.config)
+        dataset_cfg = cfg["datasets"].get(args.dataset)
+
+    if args.max_weight is not None:
+        max_weight = args.max_weight
+    elif dataset_cfg is not None:
+        max_weight = int(dataset_cfg["max_weight"])
+    else:
+        print("ERROR: --max-weight required when --dataset is not given")
+        return 2
+
+    if args.spin_sym is not None:
+        spin_sym = args.spin_sym
+    elif dataset_cfg is not None:
+        spin_sym = bool(dataset_cfg["spin_sym"])
+    else:
+        print("ERROR: --spin-sym / --no-spin-sym required when --dataset is not given")
+        return 2
+
+    # Resolve out dir.
+    if args.out is not None:
+        out_dir = Path(args.out)
+    elif args.dataset is not None:
+        out_dir = DEFAULT_OUT_ROOT / args.dataset / "validate"
+    else:
+        out_dir = DEFAULT_OUT_ROOT / args.ckpt.stem / "validate"
+    _open_progress_log(out_dir)
+
+    print(f"=== validate dataset={args.dataset} ckpt={args.ckpt} ===")
+    print(f"  resolved: max_weight={max_weight}, spin_sym={spin_sym}")
+
+    n_qubits_hint = dataset_cfg.get("n_qubits") if dataset_cfg is not None else None
+    sim, theta, model_bp, meta = _build_simulator_from_checkpoint(
+        args.ckpt, max_weight, spin_sym, n_qubits_hint
+    )
+    n = sim.n_qubits
+    print(f"  n_qubits={n}  theta.shape={theta.shape}  meta={meta}")
+
+    # Ground-truth routing with explicit n-range guard.
+    t0 = time.perf_counter()
+    if spin_sym:
+        print("  ground truth via iqpopt.IqpSimulator.probs(theta)  [spin_sym=True]")
+        q_exact = np.asarray(sim.probs(jnp.asarray(theta)))
+    else:
+        assert n <= 20, (
+            f"validate --no-spin-sym: ground-truth path requires n<=20 "
+            f"(IQPModel.probability_vector_exact is O(2**n)); got n={n}. "
+            f"Use --spin-sym to route ground truth via iqpopt.probs(theta), "
+            f"or reduce the checkpoint."
+        )
+        print("  ground truth via IQPModel.probability_vector_exact  [spin_sym=False, n<=20]")
+        q_exact = model_bp.probability_vector_exact(max_qubits=20)
+    t_truth = time.perf_counter() - t0
+    truth_ac = check_anti_concentration(q_exact)
+    truth_scaled_ss = float(truth_ac["scaled_second_moment"])
+    print(f"  truth_scaled_ss={truth_scaled_ss:.6f}  (truth path {t_truth:.1f}s)")
+
+    # Run AC estimator.
+    t0 = time.perf_counter()
+    ac = pauli_ac_estimator(
+        sim, theta,
+        num_pauli_samples=args.num_pauli_samples,
+        n_expval_samples=args.n_expval_samples,
+        seed=args.seed,
+    )
+    wall = time.perf_counter() - t0
+    delta = ac.scaled_ss_hat - truth_scaled_ss
+    within_2 = bool(abs(delta) <= 2.0 * ac.sigma)
+    within_3 = bool(abs(delta) <= 3.0 * ac.sigma)
+    print(f"  estimated={ac.scaled_ss_hat:.6f} +- {ac.sigma:.6f}  delta={delta:+.6f}  "
+          f"within_2sigma={within_2}  within_3sigma={within_3}")
+
+    # Dump raw Y samples (useful for validation post-mortem).
+    raw_Y_path = out_dir / "raw_Y.npy"
+    np.save(raw_Y_path, ac.raw_Y_samples)
+
+    cfg_blob = _namespace_to_jsonable(
+        args,
+        extra={
+            "resolved_max_weight": int(max_weight),
+            "resolved_spin_sym": bool(spin_sym),
+            "resolved_out_dir": str(out_dir),
+        },
+    )
+    import iqpopt
+    import platform as _platform
+    payload = {
+        "tag": f"validate/{args.dataset or Path(args.ckpt).stem}",
+        "truth_scaled_ss": truth_scaled_ss,
+        "estimated_scaled_ss_hat": float(ac.scaled_ss_hat),
+        "estimated_sigma": float(ac.sigma),
+        "delta": float(delta),
+        "within_2sigma": within_2,
+        "within_3sigma": within_3,
+        "config": cfg_blob,
+        "provenance": {
+            "wall_time_sec": float(wall),
+            "truth_wall_time_sec": float(t_truth),
+            "seed": int(args.seed),
+            "num_pauli_samples": int(args.num_pauli_samples),
+            "n_expval_samples": int(args.n_expval_samples),
+            "iqpopt_version": getattr(iqpopt, "__version__", "unknown"),
+            "checkpoint_sha256": _sha256_of_file(Path(args.ckpt)),
+            "checkpoint_path": str(args.ckpt),
+            "raw_Y_samples_path": _rel_to_repo(raw_Y_path),
+            "python_version": _platform.python_version(),
+            "platform": _platform.platform(),
+        },
+    }
+
+    out_json = out_dir / "validation.json"
+    with open(out_json, "w", encoding="utf-8") as f:
+        json.dump(payload, f, indent=2, default=str)
+    print(f"  wrote {out_json}")
+    return 0 if within_2 else 1
+
+
+def _cmd_all(args: argparse.Namespace) -> int:
+    cfg = _load_dataset_config(args.config)
+    big_n = list(cfg["big_n"])
+    assert set(big_n) <= set(DATASET_NAMES), (
+        f"big_n datasets {set(big_n) - set(DATASET_NAMES)} not in DATASET_NAMES"
+    )
+
+    root_out = DEFAULT_OUT_ROOT
+    root_out.mkdir(parents=True, exist_ok=True)
+    # Use a top-level progress log for the --all run.
+    _open_progress_log(root_out)
+    print(f"=== all: dispatching over {big_n} ===")
+
+    summary: dict[str, dict[str, Any]] = {}
+    for name in big_n:
+        ds_out = root_out / name
+        default_ckpt = ds_out / "checkpoint.npz"
+        if not default_ckpt.exists():
+            msg = f"SKIP {name}: no checkpoint at {default_ckpt}"
+            print(msg)
+            if args.skip_missing_checkpoint:
+                summary[name] = {"status": "skipped", "error": None, "json_path": None}
+                continue
+            summary[name] = {"status": "failed", "error": msg, "json_path": None}
+            continue
+
+        sub_args = argparse.Namespace(
+            command="estimate",
+            dataset=name,
+            ckpt=None,
+            out=None,
+            max_weight=None,
+            spin_sym=None,
+            num_pauli_samples=args.num_pauli_samples,
+            n_expval_samples=args.n_expval_samples,
+            k_values=[1, 2, 3, 4, 6, 8],
+            subsets_per_order=128,
+            seed=args.seed,
+            config=args.config,
+            func=_cmd_estimate,
+        )
+        try:
+            rc = _cmd_estimate(sub_args)
+            if rc == 0:
+                summary[name] = {
+                    "status": "ok",
+                    "error": None,
+                    "json_path": _rel_to_repo(ds_out / "estimator.json"),
+                }
+            else:
+                summary[name] = {
+                    "status": "failed",
+                    "error": f"estimate returned rc={rc}",
+                    "json_path": None,
+                }
+        except Exception as e:
+            import traceback
+            tb = traceback.format_exc()
+            print(f"FAIL {name}: {type(e).__name__}: {e}\n{tb}")
+            summary[name] = {"status": "failed", "error": f"{type(e).__name__}: {e}", "json_path": None}
+
+    out_json = root_out / "all_runs.json"
+    with open(out_json, "w", encoding="utf-8") as f:
+        json.dump(summary, f, indent=2)
+    print(f"wrote {out_json}")
+
+    # Return 0 unless every dataset failed.
+    all_failed = all(v["status"] == "failed" for v in summary.values())
+    return 1 if all_failed else 0
 
 
 def main(argv: list[str] | None = None) -> int:
