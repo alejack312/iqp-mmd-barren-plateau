@@ -41,7 +41,7 @@ from iqp_bp.iqp.model import IQPModel  # for _fwht_inplace static method
 @dataclass
 class ACResult:
     scaled_ss_hat: float
-    sigma: float                         # plug-in standard error, = 2**n * sqrt(var(Y_m) / M)
+    sigma: float                         # plug-in standard error = (2**n - 1) * sqrt(var(Y_m) / M)
     by_weight: dict[int, dict[str, float]]  # k -> {contribution_to_total, contribution_sigma, count}
     effective_m: int                     # count of m with |Y_m| > 1e-12
     max_squared_expval: float            # max_m Y_m
@@ -51,14 +51,14 @@ class ACResult:
 
     """
     by_weight[k] = {
-        "contribution_to_total": float,   # (2**n) * sum(Y_m for m with weight==k) / M
+        "contribution_to_total": float,   # (2**n - 1) * sum(Y_m for m with weight==k) / M
                                           #   -- additive contribution of weight-k Paulis to
                                           #   scaled_ss_hat (excluding the analytic identity
                                           #   term +1). sum over k of contribution_to_total
                                           #   == scaled_ss_hat - 1.
         "contribution_sigma": float,      # plug-in SE of the above contribution:
-                                          #   (2**n) * sqrt(var(Y_m[weights==k], ddof=1)
-                                          #                 * count / M**2)
+                                          #   (2**n - 1) * sqrt(var(Y_m[weights==k], ddof=1)
+                                          #                     * count / M**2)
         "count": int,                     # number of drawn a's with hamming weight k
                                           #   (sum over k == M).
     }
@@ -82,19 +82,21 @@ def pauli_ac_estimator(
 ) -> ACResult:
     """Parseval-MC estimator of the scaled second moment ``2**n * sum_x q(x)**2``.
 
-    Uses the Parseval identity
+    Uses the Parseval identity (Hadamard basis):
 
-        ``2**n * sum_x q(x)**2 = (1 / 2**n) * sum_a <Z_a>**2``,
+        ``2**n * sum_x q(x)**2 = sum_a <Z_a>**2``
 
-    which we split into an analytic identity-Pauli term and a Monte Carlo
-    tail over non-identity supports:
+    where the sum runs over all ``2**n`` Pauli-Z supports ``a in {0,1}**n``
+    and ``<Z_a>`` is the expectation of the diagonal Pauli-Z operator with
+    support ``a`` under the output distribution ``q``. The identity term
+    ``a = 0`` contributes ``<Z_0>**2 = 1`` analytically, leaving the
+    ``2**n - 1`` non-identity Paulis for Monte Carlo:
 
-        ``scaled_ss = 1 + (2**n / M) * sum_m Y_m``
+        ``scaled_ss = 1 + ((2**n - 1) / M) * sum_m Y_m``
 
-    where the leading ``1`` is the analytic identity-Pauli contribution
-    ``2**n * (1/2**n)**2`` and ``Y_m = <Z_{a_m}>**2`` for ``M`` draws
-    ``a_m ~ Bernoulli(1/2)**n``, rejecting ``a_m = 0`` (the identity is
-    already accounted for analytically).
+    where ``Y_m = <Z_{a_m}>**2`` with ``a_m`` drawn uniformly from the
+    ``2**n - 1`` non-identity supports (implemented as
+    ``Bernoulli(1/2)**n`` with rejection of ``a_m = 0``).
 
     Args:
         simulator: fully-constructed ``iqpopt.IqpSimulator``; the caller
@@ -158,19 +160,26 @@ def pauli_ac_estimator(
     Y_m = means ** 2  # shape (M,)
 
     # Overall estimate and plug-in standard error.
-    scaled_ss_hat = 1.0 + (2.0 ** n) * float(Y_m.mean())
-    sigma = (2.0 ** n) * float(np.sqrt(np.var(Y_m, ddof=1) / M))
+    # Since a_m is drawn uniformly from the 2**n - 1 non-identity supports,
+    # (1/M) sum Y_m estimates the non-identity mean
+    # (1/(2**n - 1)) * sum_{a != 0} <Z_a>**2, so the unbiased MC estimator
+    # of scaled_ss is 1 + (2**n - 1) * mean(Y_m).
+    pauli_scale = (2.0 ** n) - 1.0
+    scaled_ss_hat = 1.0 + pauli_scale * float(Y_m.mean())
+    sigma = pauli_scale * float(np.sqrt(np.var(Y_m, ddof=1) / M))
 
-    # Per-weight breakdown.
+    # Per-weight breakdown. contribution_to_total[k] is the additive
+    # contribution of weight-k Paulis to scaled_ss_hat - 1:
+    #   (count_k / M) * (2**n - 1) * mean(Y_k) = pauli_scale * sum(Y_k) / M.
     weights = ops_np.sum(axis=1).astype(np.int64)
     by_weight: dict[int, dict[str, float]] = {}
     for k in np.unique(weights):
         mask = (weights == k)
         count_k = int(mask.sum())
         Y_k = Y_m[mask]
-        contribution_to_total = (2.0 ** n) * float(Y_k.sum()) / M
+        contribution_to_total = pauli_scale * float(Y_k.sum()) / M
         if count_k > 1:
-            contribution_sigma = (2.0 ** n) * float(
+            contribution_sigma = pauli_scale * float(
                 np.sqrt(np.var(Y_k, ddof=1) * count_k / (M ** 2))
             )
         else:
