@@ -147,7 +147,7 @@ def pauli_ac_estimator(
     theta_j = jnp.asarray(np.asarray(theta, dtype=np.float64))
     key = jax.random.PRNGKey(int(seed))
 
-    means_j, _stderrs_j = simulator.op_expval(
+    means_j, stderrs_j = simulator.op_expval(
         theta_j,
         ops,
         n_samples=int(n_expval_samples),
@@ -156,8 +156,21 @@ def pauli_ac_estimator(
         max_batch_samples=max_batch_samples,
     )
     means = np.asarray(means_j, dtype=np.float64)
+    stderrs = np.asarray(stderrs_j, dtype=np.float64)
 
-    Y_m = means ** 2  # shape (M,)
+    # Y_m estimates <Z_a>^2, but (mean_a)^2 is a positively biased estimator
+    # of <Z_a>^2 by Var(mean_a) per operator. iqpopt.op_expval returns
+    # stderrs = std_per_sample / sqrt(n_samples), i.e. the plug-in SE of
+    # mean_a. Thus Var(mean_a) = stderrs^2, and the unbiased per-operator
+    # estimator is means^2 - stderrs^2. We clip at 0 since the subtracted
+    # estimate can be slightly negative under small n_expval_samples.
+    #
+    # This correction is LOAD-BEARING at large n: uncorrected, the scaled_ss
+    # estimator exhibits systematic positive bias of roughly
+    # (2**n - 1) * E[Var(mean_a)], which at n=16 is ~65k * 1/n_expval_samples
+    # and routinely pushes estimates outside 2-sigma agreement with exact
+    # truth -- observed empirically at Phase 2 n=16 validation (02-01-SUMMARY).
+    Y_m = np.clip(means ** 2 - stderrs ** 2, 0.0, None)  # shape (M,)
 
     # Overall estimate and plug-in standard error.
     # Since a_m is drawn uniformly from the 2**n - 1 non-identity supports,
