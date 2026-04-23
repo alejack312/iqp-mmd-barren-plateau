@@ -51,7 +51,24 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 # scripts/ on sys.path so ``from investigate_iqp_mmd_ac import ...`` works.
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
+# Heavy imports (jax / iqpopt / iqp_bp) are deferred into run_val02 so that
+# --dry-run and --skip-val02 paths remain fast and avoid JAX init.
 DEFAULT_CONFIG_PATH = REPO_ROOT / "configs" / "validate_n16_checkpoints.yaml"
+
+# Dataset-tag -> generator-tag mapping. The CLI / YAML use {2D_ising, 8_blobs};
+# investigate_iqp_mmd_ac.py's sample generators use {ising, spin_blobs}. Keep
+# the mapping explicit here so downstream reader can audit which generator was
+# used to rebuild X_target (the training CSVs at DatasetPaths.train_path(...)
+# are not populated locally -- STATE.md blocker).
+GEN_TAG_FOR_DATASET = {
+    "2D_ising": "ising",
+    "8_blobs": "spin_blobs",
+}
+# Authoritative num_train used by investigate_iqp_mmd_ac.py --num-train default
+# and matched to what the checkpoints in results/iqp_mmd_ac_investigation were
+# trained on (checkpoint seed=666).
+TARGET_NUM_TRAIN = 5000
+TARGET_SEED = 666
 
 log = logging.getLogger("validate_n16")
 
@@ -206,8 +223,53 @@ def run_val01(
 
 
 # --------------------------------------------------------------------------
-# VAL-02 placeholder (implemented in Task 2).
+# VAL-02: in-process marginal-mismatch comparison.
 # --------------------------------------------------------------------------
+def _build_x_target(dataset: str, n: int) -> np.ndarray:
+    """Rebuild the target samples the checkpoint was trained on.
+
+    Deviation from plan text: the plan's VAL-02 path calls
+    ``DatasetPaths(REPO_ROOT).train_path(dataset)`` to load a training CSV, but
+    those CSVs are not populated locally (see STATE.md blockers and
+    ``_cmd_estimate`` in pauli_estimator_investigation.py which falls through
+    on FileNotFoundError). The checkpoints under
+    ``results/iqp_mmd_ac_investigation/checkpoints/`` were produced by
+    ``scripts/investigate_iqp_mmd_ac.py`` with ``--num-train 5000 --seed 666``,
+    which generates X synthetically via gen_ising_gibbs / gen_spin_blobs. We
+    regenerate from the same generator + seed so X_target matches the
+    distribution the checkpoint was trained on.
+    """
+    from investigate_iqp_mmd_ac import gen_ising_gibbs, gen_spin_blobs
+
+    gen_tag = GEN_TAG_FOR_DATASET[dataset]
+    if gen_tag == "ising":
+        width = int(round(np.sqrt(n)))
+        assert width * width == n, f"ising expects square n, got n={n}"
+        X = gen_ising_gibbs(
+            width=width, temperature=2.5, num_samples=TARGET_NUM_TRAIN,
+            seed=TARGET_SEED, burn_in=2000, thin=10,
+        )
+    elif gen_tag == "spin_blobs":
+        peak_weight = max(1, n // 2)
+        n_blobs = min(20, 2 ** (n - 2))
+        X = gen_spin_blobs(
+            n=n, n_blobs=n_blobs, peak_weight=peak_weight, noise_prob=0.05,
+            num_train=TARGET_NUM_TRAIN, seed=TARGET_SEED,
+        )
+    else:
+        raise ValueError(f"no generator mapping for dataset={dataset!r}")
+
+    X = np.asarray(X, dtype=np.uint8)
+    if X.min() < 0:
+        # Defensive: mirrors the {-1,+1} -> {0,1} guard at
+        # pauli_estimator_investigation.py:341-342.
+        X = ((X + 1) // 2).astype(np.uint8)
+    assert X.shape == (TARGET_NUM_TRAIN, n), (
+        f"X_target shape {X.shape} != expected ({TARGET_NUM_TRAIN}, {n})"
+    )
+    return X
+
+
 def run_val02(
     dataset: str,
     ckpt: Path,
@@ -215,9 +277,117 @@ def run_val02(
     seed: int,
     cfg: dict[str, Any],
 ) -> list[dict[str, Any]]:
-    """Stub; implemented in Task 2."""
-    # TODO(Task 2): VAL-02 loop here.
-    raise NotImplementedError("run_val02 is implemented in Task 2.")
+    """Compute VAL-02 rows (one per k) for a single (dataset, seed) pair.
+
+    Builds the IqpSimulator the same way the CLI does, calls
+    ``pauli_marginal_mismatch`` for the estimator side and
+    ``per_order_marginal_mismatch`` (imported from scripts/) for the exact
+    reference. Returns a list of rows, one per k in ``cfg['val02']['k_values']``.
+
+    Per pinned_decisions Sec 4: a separate call to ``pauli_marginal_mismatch``
+    per k because the estimator takes a scalar ``num_subsets`` across all
+    k_values but we want a different budget per k.
+    """
+    # Deferred heavy imports.
+    from iqpopt import IqpSimulator
+    from iqpopt.utils import local_gates
+    from iqp_bp.estimators.pauli import pauli_marginal_mismatch
+    from iqp_bp.experiments.run_validation import load_iqp_checkpoint
+
+    from investigate_iqp_mmd_ac import per_order_marginal_mismatch
+
+    # 1. Load checkpoint and reconstruct simulator.
+    model_bp, meta = load_iqp_checkpoint(str(ckpt))
+    theta = np.asarray(model_bp.theta, dtype=np.float64)
+    n = int(meta.get("n_qubits", model_bp.n))
+    max_weight = int(meta.get("max_weight", 4))
+    assert n == 16, f"VAL-02 harness pins n=16; got n={n} from {ckpt}"
+
+    gates = local_gates(n_qubits=n, max_weight=max_weight)
+    assert len(theta) == len(gates), (
+        f"theta has {len(theta)} entries but local_gates(n={n}, "
+        f"max_weight={max_weight}) produced {len(gates)} gates"
+    )
+    sim = IqpSimulator(n_qubits=n, gates=gates, sparse=False, spin_sym=spin_sym)
+
+    # 2. Build X_target (deviation: regenerate from generator, not CSV).
+    X_target = _build_x_target(dataset, n)
+
+    # 3. Exact full distribution q_theta via IQPModel.probability_vector_exact.
+    # Research Sec 2: this routes through the n<=20 guard; fine at n=16.
+    # Used for BOTH datasets regardless of spin_sym because
+    # per_order_marginal_mismatch consumes a 2**n vector.
+    q_theta = np.asarray(
+        model_bp.probability_vector_exact(max_qubits=20), dtype=np.float64
+    )
+
+    rows: list[dict[str, Any]] = []
+
+    for k in cfg["val02"]["k_values"]:
+        k_int = int(k)
+        K = int(cfg["val02"]["num_subsets"][k_int])
+        n_expval = int(cfg["val02"]["n_expval_samples"])
+
+        t0 = time.perf_counter()
+        est = pauli_marginal_mismatch(
+            sim, theta, X_target,
+            k_values=(k_int,),
+            num_subsets=K,
+            n_expval_samples=n_expval,
+            seed=int(seed),
+        )
+        est_wall = time.perf_counter() - t0
+
+        per_k_est = est.per_k[k_int]
+        mean_tv_est = float(per_k_est["mean_tv"])
+        sigma_est = float(per_k_est["sigma"])
+        est_num_subsets = int(per_k_est["num_subsets"])
+
+        # per_order_marginal_mismatch returns {k: {"mean_tv", "max_tv", ...}}.
+        # Flat keyed on k -- NOT {"mean_tv": {k: ...}} as the plan text
+        # speculated. Verified at scripts/investigate_iqp_mmd_ac.py:150-175.
+        t0 = time.perf_counter()
+        mk_exact = per_order_marginal_mismatch(
+            q_theta, X_target, n=n,
+            max_subsets_per_order=K,
+            seed=int(seed),
+        )
+        exact_wall = time.perf_counter() - t0
+
+        mean_tv_exact = float(mk_exact[k_int]["mean_tv"])
+        exact_num_subsets = int(mk_exact[k_int]["num_subsets"])
+
+        row = {
+            "dataset": dataset,
+            "criterion": f"val02_mean_tv_k{k_int}",
+            "k": k_int,
+            "seed": int(seed),
+            "exact": mean_tv_exact,
+            "estimate": mean_tv_est,
+            "sigma": sigma_est,
+            "num_subsets": K,
+            "estimator_num_subsets": est_num_subsets,
+            "exact_num_subsets": exact_num_subsets,
+            "n_expval_samples": n_expval,
+            "wall_time_s": float(est_wall + exact_wall),
+            "est_wall_time_s": float(est_wall),
+            "exact_wall_time_s": float(exact_wall),
+            "metadata_wall_time_sec": float(
+                est.metadata.get("wall_time_sec", 0.0)
+            ),
+        }
+        rows.append(row)
+
+        log.info(
+            "VAL-02 dataset=%s seed=%d k=%d | est=%.4f +- %.4f  exact=%.4f  "
+            "(z=%.2f)  est_subsets=%d exact_subsets=%d",
+            dataset, seed, k_int,
+            mean_tv_est, sigma_est, mean_tv_exact,
+            (mean_tv_est - mean_tv_exact) / sigma_est if sigma_est > 0 else float("nan"),
+            est_num_subsets, exact_num_subsets,
+        )
+
+    return rows
 
 
 # --------------------------------------------------------------------------
@@ -286,9 +456,18 @@ def main(argv: list[str] | None = None) -> int:
         log.info("dry-run: %d VAL-01 argvs enumerated; exiting without running.", len(val01_rows))
         return 0
 
-    # VAL-02 (in-process) -- implemented in Task 2.
+    # VAL-02 (in-process).
     val02_rows: list[dict[str, Any]] = []
-    # TODO(Task 2): iterate (dataset, seed) x k and append.
+    if not args.skip_val02:
+        for ck in cfg["checkpoints"]:
+            ds = ck["dataset"]
+            ckpt_path = REPO_ROOT / ck["ckpt"]
+            spin_sym = bool(ck["spin_sym"])
+            if not ckpt_path.exists():
+                raise FileNotFoundError(f"checkpoint missing: {ckpt_path}")
+            for seed in cfg["seeds"]:
+                rows = run_val02(ds, ckpt_path, spin_sym, seed, cfg)
+                val02_rows.extend(rows)
 
     # --- Stub combined JSON (Task 3 will replace with aggregated shape). ---
     payload = {
