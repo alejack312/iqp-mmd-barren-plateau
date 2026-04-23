@@ -354,7 +354,7 @@ def pauli_marginal_mismatch(
             try:
                 key_sub = jax.random.fold_in(root_key, subset_counter)
                 subset_counter += 1
-                means_j, _ = simulator.op_expval(
+                means_j, stderrs_j = simulator.op_expval(
                     theta_j,
                     jnp.asarray(ops_np),
                     n_samples=int(n_expval_samples),
@@ -363,6 +363,7 @@ def pauli_marginal_mismatch(
                     max_batch_samples=max_batch_samples,
                 )
                 means = np.asarray(means_j, dtype=np.float64).copy()
+                stderrs = np.asarray(stderrs_j, dtype=np.float64)
             except Exception as err:  # noqa: BLE001
                 print(
                     f"[pauli_marginal_mismatch] subset {S} failed: {err!r}",
@@ -373,18 +374,14 @@ def pauli_marginal_mismatch(
                 continue
 
             # Invert to marginal q_S via unnormalised FWHT; then divide by 2**k.
+            # NOTE: we deliberately do NOT clip q_S at 0 / renormalise here
+            # (as a naive implementation might), because that clip itself is
+            # a source of positive bias: negative MC noise is truncated while
+            # positive noise passes through, which pushes the mean of
+            # |q_S - p_S| upward. The Jensen debias below is cleaner.
             values = means.astype(np.float64, copy=True)
             IQPModel._fwht_inplace(values)
             q_S = values / float(size)
-
-            # Defensive clip + renormalise against MC noise.
-            q_S = np.clip(q_S, 0.0, None)
-            s = q_S.sum()
-            if s > 0.0:
-                q_S = q_S / s
-            else:
-                # Extreme MC failure; fall back to uniform.
-                q_S = np.full(size, 1.0 / size, dtype=np.float64)
 
             # Empirical marginal p_S on the same LSB-first index convention.
             cols = target_empirical[:, S_list].astype(np.int64, copy=False)
@@ -392,7 +389,38 @@ def pauli_marginal_mismatch(
             idx = (cols * weights_lsb[None, :]).sum(axis=1)
             p_S = np.bincount(idx, minlength=size).astype(np.float64) / float(num_train)
 
-            tv = 0.5 * float(np.abs(q_S - p_S).sum())
+            # Jensen-style debias of the signed marginal residual.
+            # |q_S[x] - p_S[x]| is a POSITIVELY BIASED estimator of
+            # |q_true_S[x] - p_S[x]| under MC noise in means_a (which
+            # propagates linearly through the FWHT to q_S[x]). Mirrors the
+            # 01-01 `means^2 - stderrs^2` debias on `pauli_ac_estimator`
+            # (commit 4fc7e10, 02-01-SUMMARY "Outstanding bug").
+            #
+            # Derivation: q_S[x] = (1/2^k) * sum_a chi_a(x) * means_a is
+            # linear in the MC-noisy means_a (chi_a(x) in {-1, +1}), so
+            #   Var(q_S[x]) = (1/4^k) * sum_a chi_a(x)^2 * Var(means_a)
+            #              = (1/4^k) * sum_a stderrs_a^2  (chi^2 = 1)
+            # -- same value for all x, call it sigma2_x. iqpopt.op_expval
+            # returns stderrs = SE of mean_a, so Var(mean_a) = stderrs_a^2.
+            #
+            # Then E[(q_S[x] - p_S[x])^2] = (q_true_S[x] - p_S[x])^2 +
+            # sigma2_x (plus negligible Var(p_S[x]) = p*(1-p)/num_train),
+            # so max(d^2 - sigma2_x, 0) is an unbiased (clipped) estimator
+            # of the true squared residual. sqrt() is a mildly biased
+            # (upward) estimator of |d_true|, but far less biased than the
+            # uncorrected |d_hat|.
+            #
+            # Alternatives considered and rejected: (a) per-bin multinomial
+            # variance q_hat*(1-q_hat)/N -- over-subtracts on diffuse
+            # marginals (blobs k>=2); (b) soft-threshold |d_hat| - sigma *
+            # sqrt(2/pi) -- under-corrects residual bias on blobs k>=2.
+            # The uniform-sigma sqrt form below gave the best overall
+            # z-score distribution across Ising + Blobs at n=16 in the
+            # Phase 2 validation harness (6/8 criteria pass/warn).
+            d = q_S - p_S
+            sigma2_x = float(np.sum(stderrs ** 2)) / float(size * size)
+            d_sq_debias = np.clip(d * d - sigma2_x, 0.0, None)
+            tv = 0.5 * float(np.sqrt(d_sq_debias).sum())
             per_subset_tvs.append(tv)
 
         arr = np.asarray(per_subset_tvs, dtype=np.float64)
