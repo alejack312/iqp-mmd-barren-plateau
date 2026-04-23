@@ -6,8 +6,8 @@
     "checkpoint_path": null
   },
   "dwave": {
-    "outcome": "acquired",
-    "reason": null,
+    "outcome": "training_error",
+    "reason": "JaxRuntimeError: INTERNAL: Buffer Definition Event: Error dispatching computation: Error dispatching computation: Error dispatching computation: Error dispatching computation: Error dispatching computation: Error dispatching computation: Error dispatching computation: Error dispatching computation: Error dispatching computation: Error dispatching computation: Error dispatching computation: Error dispatching computation: Error dispatching computation: Error dispatching computation: Out of memory allocating 969006720 bytes.",
     "csv_path": "datasets/dwave/dwave_X_train.csv",
     "checkpoint_path": null
   },
