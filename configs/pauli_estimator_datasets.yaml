@@ -1,0 +1,56 @@
+# Per-dataset hyperparameters needed to reconstruct iqpopt.IqpSimulator at
+# estimator time. Checkpoints (.npz) carry G + theta + a few scalar metadata
+# fields (n_qubits, max_weight, seed, source) but do NOT carry spin_sym, so
+# these live in a sidecar YAML. Overridable on the CLI via
+# --max-weight / --spin-sym / --no-spin-sym.
+#
+# n_qubits is informational -- the authoritative source at estimate-time is
+# len(theta) vs len(local_gates(n, max_weight)); the CLI asserts consistency.
+
+# Datasets to iterate under `--all` (REQUIREMENTS DATA-01, the 5 big-n).
+big_n:
+  - spin_glass
+  - dwave
+  - MNIST
+  - genomic-805
+  - scale_free
+
+datasets:
+  # Phase 2 validation targets (n=16 existing checkpoints at
+  # results/iqp_mmd_ac_investigation/checkpoints/).
+  # spin_sym provenance verified against scripts/investigate_iqp_mmd_ac.py:287,297
+  # and scripts/rerun_ac_via_iqpopt.py:31,33 (both agree).
+  8_blobs:
+    max_weight: 4      # matches hp at investigate_iqp_mmd_ac.py:287
+    spin_sym: false    # VERIFIED: blobs uses spin_sym=False (both source scripts agree)
+    n_qubits: 16
+  2D_ising:
+    max_weight: 4      # matches hp at investigate_iqp_mmd_ac.py:297
+    spin_sym: true     # VERIFIED: ising uses spin_sym=True (both source scripts agree)
+    n_qubits: 16
+
+  # Phase 3 big-n datasets. NO checkpoints exist yet (verified:
+  # `results/iqp_mmd/<dataset>/checkpoint.npz` does not exist for any big-n dataset).
+  # Values below are PLACEHOLDERS -- Phase 3 will overwrite them when the
+  # actual training runs decide max_weight / spin_sym. The CLI's --max-weight
+  # and --spin-sym flags override these at estimate time.
+  spin_glass:
+    max_weight: 2      # placeholder -- Phase 3 will overwrite
+    spin_sym: true     # placeholder -- Phase 3 will overwrite
+    n_qubits: 1000
+  dwave:
+    max_weight: 2      # placeholder -- Phase 3 will overwrite
+    spin_sym: true     # placeholder -- Phase 3 will overwrite
+    n_qubits: 484
+  MNIST:
+    max_weight: 2      # placeholder -- Phase 3 will overwrite
+    spin_sym: false    # placeholder -- Phase 3 will overwrite
+    n_qubits: 784
+  genomic-805:
+    max_weight: 2      # placeholder -- Phase 3 will overwrite
+    spin_sym: false    # placeholder -- Phase 3 will overwrite
+    n_qubits: 805
+  scale_free:
+    max_weight: 2      # placeholder -- Phase 3 will overwrite
+    spin_sym: true     # placeholder -- Phase 3 will overwrite
+    n_qubits: 1000
