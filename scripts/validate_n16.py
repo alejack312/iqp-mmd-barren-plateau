@@ -419,12 +419,22 @@ def run_val02(
     # 2. Build X_target (deviation: regenerate from generator, not CSV).
     X_target = _build_x_target(dataset, n)
 
-    # 3. Exact full distribution q_theta via IQPModel.probability_vector_exact.
-    # Research Sec 2: this routes through the n<=20 guard; fine at n=16.
-    # Used for BOTH datasets regardless of spin_sym because
-    # per_order_marginal_mismatch consumes a 2**n vector.
-    q_theta = np.asarray(
-        model_bp.probability_vector_exact(max_qubits=20), dtype=np.float64
+    # 3. Exact full distribution q_theta via sim.probs(theta) -- the SAME
+    # iqpopt simulator the estimator uses, so spin_sym is honored on BOTH
+    # sides. Deviation from plan text (which said to use
+    # IQPModel.probability_vector_exact for both datasets): IQPModel
+    # .probability_vector_exact does NOT support spin_sym (v2 requirement
+    # SPINSYM-01, currently worked around). On spin_sym=True checkpoints
+    # (e.g. 2D_ising) it computes the NON-spin-sym distribution while the
+    # estimator computes the spin_sym=True distribution -- divergent refs.
+    # Routing exact through sim.probs(theta) matches the 01-01 n=4 unit
+    # test pattern and the 02-CONTEXT prescription: "For spin_sym=True
+    # route ground truth through iqpopt.probs(theta)." At n=16 this
+    # materialises a 524 KB dense vector -- fine.
+    import jax.numpy as jnp  # deferred heavy import
+    q_theta = np.asarray(sim.probs(jnp.asarray(theta)), dtype=np.float64)
+    assert q_theta.shape == (2 ** n,), (
+        f"sim.probs returned shape {q_theta.shape}, expected (2**{n},)"
     )
 
     rows: list[dict[str, Any]] = []
@@ -663,8 +673,8 @@ def main(argv: list[str] | None = None) -> int:
             "notes": {
                 "k_subset_alignment": "unaligned_same_distribution",
                 "exact_mk_routing": (
-                    "IQPModel.probability_vector_exact for BOTH datasets at "
-                    "n=16 (n<=20 guard)"
+                    "sim.probs(theta) -- same IqpSimulator as estimator "
+                    "uses, so spin_sym is honored on both sides"
                 ),
                 "val02_sigma_source": (
                     "estimator per-k plug-in SE (MarginalResult.per_k[k]['sigma'])"
