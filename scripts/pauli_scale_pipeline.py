@@ -398,7 +398,7 @@ def _load_status_if_exists() -> dict[str, dict[str, Any]]:
     return {}
 
 
-# --- Training stub (full body added in Task 2) -----------------------------
+# --- Training (implemented in Task 2) --------------------------------------
 def train_dataset(
     name: str,
     csv_path: Path,
@@ -407,18 +407,131 @@ def train_dataset(
 ) -> dict[str, Any]:
     """Train IqpSimulator via iqpopt + save deterministic checkpoint.
 
-    [Task 1 stub] The real implementation lands in Task 2 and will defer
-    jax/iqpopt imports to call-time so that `--acquire-only` preflights don't
-    pay startup cost. Raising NotImplementedError here makes the expected
-    return contract unambiguous; --acquire-only paths do not reach this stub.
+    Heavy jax/iqpopt imports are deferred to call-time so that the
+    `--acquire-only` preflight path never pays JAX startup cost.
 
-    Returns (when implemented): dict with fields: checkpoint_path, final_loss,
-    initial_loss, n_iters_run, train_time_sec, tag.
+    Returns a dict with fields: checkpoint_path, final_loss, initial_loss,
+    n_iters_run, train_time_sec, tag.
     """
-    raise NotImplementedError(
-        "train_dataset is implemented in Task 2 of 03-01-PLAN.md; "
-        "run with --acquire-only until then"
+    # --- Deferred heavy imports ---
+    import jax.numpy as jnp
+    from iqpopt import IqpSimulator, Trainer
+    from iqpopt.utils import local_gates, initialize_from_data
+    import iqpopt.gen_qml as gen
+
+    from iqp_mmd.checkpoint_export import (
+        generator_matrix_from_gates,
+        save_deterministic_iqp_checkpoint,
     )
+
+    if name not in DATASET_HYPERPARAMS:
+        raise ValueError(f"no hyperparameters registered for {name!r}")
+    hp = DATASET_HYPERPARAMS[name]
+
+    _log(f"  [{name}] loading X_train from {csv_path}")
+    X_train = np.loadtxt(csv_path, delimiter=",", dtype=np.int32)
+    if X_train.ndim == 1:
+        X_train = X_train.reshape(1, -1)
+    # Defensive clamp to {0,1}; upstream loaders should have done this but
+    # we catch stray -1/2/+ values (e.g. raw dwave {-1,+1}, .hapt ternary).
+    if X_train.min() < 0 or X_train.max() > 1:
+        X_train = np.clip(X_train, 0, 1).astype(np.int32)
+    # Truncate to 5000 rows to match Phase 2 convention and bound kernel
+    # matrix memory on larger datasets.
+    if X_train.shape[0] > 5000:
+        X_train = X_train[:5000]
+    _log(
+        f"  [{name}] X_train shape={X_train.shape} dtype={X_train.dtype} "
+        f"min={int(X_train.min())} max={int(X_train.max())}"
+    )
+
+    # Assert feature dim matches expected n_qubits.
+    if X_train.shape[1] != hp["n_qubits"]:
+        raise ValueError(
+            f"[{name}] expected {hp['n_qubits']} features, "
+            f"got {X_train.shape[1]}; csv={csv_path}"
+        )
+
+    X_jnp = jnp.asarray(X_train)
+
+    # Seed numpy for reproducibility of the trainer's internal random_state.
+    np.random.seed(seed)
+    gates = local_gates(n_qubits=hp["n_qubits"], max_weight=hp["max_weight"])
+    _log(f"  [{name}] gates count={len(gates)}")
+
+    model = IqpSimulator(
+        n_qubits=hp["n_qubits"],
+        gates=gates,
+        sparse=False,
+        spin_sym=hp["spin_sym"],
+    )
+    trainer = Trainer(
+        loss=gen.mmd_loss_iqp,
+        optimizer="Adam",
+        stepsize=hp["stepsize"],
+    )
+    params_init = initialize_from_data(
+        gates,
+        X_jnp,
+        scale=hp["init_scale"],
+        param_noise=hp["param_noise"],
+    )
+    loss_kwargs = dict(
+        params=params_init,
+        iqp_circuit=model,
+        ground_truth=X_jnp,
+        sigma=hp["sigma"],
+        n_ops=hp["n_ops"],
+        n_samples=hp["n_samples"],
+        sqrt_loss=False,
+        wires=list(range(hp["n_qubits"])),
+    )
+
+    _log(f"  [{name}] beginning trainer.train(n_iters={n_iters}, seed={seed})")
+    t0 = time.time()
+    trainer.train(
+        n_iters=n_iters,
+        loss_kwargs=loss_kwargs,
+        val_kwargs=None,
+        convergence_interval=None,
+        random_state=int(np.random.randint(0, 99999)),
+    )
+    elapsed = time.time() - t0
+    _log(f"  [{name}] training done in {elapsed:.1f}s")
+
+    params_final = np.asarray(trainer.final_params, dtype=np.float64)
+    G = generator_matrix_from_gates(gates, n_qubits=hp["n_qubits"])
+
+    ckpt_dir = RESULTS_ROOT / name
+    ckpt_dir.mkdir(parents=True, exist_ok=True)
+    ckpt_path = ckpt_dir / "checkpoint.npz"
+    tag = f"phase3_{name}_n{hp['n_qubits']}_iters{n_iters}_seed{seed}"
+    save_deterministic_iqp_checkpoint(
+        path=ckpt_path,
+        G=G,
+        theta=params_final,
+        metadata={
+            "tag": tag,
+            "n_qubits": hp["n_qubits"],
+            "max_weight": hp["max_weight"],
+            "n_iters": n_iters,
+            "seed": int(seed),
+            "source": "pauli_scale_pipeline.py",
+        },
+    )
+
+    losses = np.asarray(getattr(trainer, "losses", []), dtype=np.float64)
+    if losses.size:
+        np.savetxt(ckpt_dir / "losses.csv", losses, delimiter=",")
+
+    return {
+        "checkpoint_path": _rel_to_repo(ckpt_path),
+        "final_loss": float(losses[-1]) if losses.size else float("nan"),
+        "initial_loss": float(losses[0]) if losses.size else float("nan"),
+        "n_iters_run": int(losses.size),
+        "train_time_sec": float(elapsed),
+        "tag": tag,
+    }
 
 
 # --- Dispatch wrappers -----------------------------------------------------

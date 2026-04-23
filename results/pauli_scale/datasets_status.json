@@ -1,0 +1,32 @@
+{
+  "spin_glass": {
+    "outcome": "skip",
+    "reason": "numpyro_broken: cannot import IsingSpins from qml_benchmarks (numpyro incompat in this env; see Phase 3 RESEARCH)",
+    "csv_path": null,
+    "checkpoint_path": null
+  },
+  "dwave": {
+    "outcome": "acquired",
+    "reason": null,
+    "csv_path": "datasets/dwave/dwave_X_train.csv",
+    "checkpoint_path": null
+  },
+  "MNIST": {
+    "outcome": "acquired",
+    "reason": null,
+    "csv_path": "datasets/MNIST/x_train.csv",
+    "checkpoint_path": null
+  },
+  "genomic-805": {
+    "outcome": "acquired",
+    "reason": null,
+    "csv_path": "datasets/genomic/805_SNP_1000G_real_train.csv",
+    "checkpoint_path": null
+  },
+  "scale_free": {
+    "outcome": "skip",
+    "reason": "numpyro_broken: cannot import IsingSpins from qml_benchmarks (numpyro incompat in this env; see Phase 3 RESEARCH)",
+    "csv_path": null,
+    "checkpoint_path": null
+  }
+}
