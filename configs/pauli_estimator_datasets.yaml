@@ -31,26 +31,27 @@ datasets:
 
   # Phase 3 big-n datasets. NO checkpoints exist yet (verified:
   # `results/iqp_mmd/<dataset>/checkpoint.npz` does not exist for any big-n dataset).
-  # Values below are PLACEHOLDERS -- Phase 3 will overwrite them when the
-  # actual training runs decide max_weight / spin_sym. The CLI's --max-weight
-  # and --spin-sym flags override these at estimate time.
+  # Paper-spec values (Recio-Armengol et al.) wired in by Phase 3 plan 03-01.
+  # spin_sym is uniformly False for big-n datasets because the paper's
+  # model_config does not enable spin_sym for any of them. The CLI's
+  # --max-weight and --spin-sym flags remain override-capable at estimate time.
   spin_glass:
-    max_weight: 2      # placeholder -- Phase 3 will overwrite
-    spin_sym: true     # placeholder -- Phase 3 will overwrite
-    n_qubits: 1000
+    max_weight: 2      # paper: max_weight=2 (ising-family)
+    spin_sym: false    # paper: no spin_sym in model_config = False
+    n_qubits: 256      # FIX 03-01: was 1000 (wrong); authoritative DatasetPaths value is 256
   dwave:
-    max_weight: 2      # placeholder -- Phase 3 will overwrite
-    spin_sym: true     # placeholder -- Phase 3 will overwrite
+    max_weight: 2      # paper: max_weight=2
+    spin_sym: false    # paper: explicitly False
     n_qubits: 484
   MNIST:
-    max_weight: 2      # placeholder -- Phase 3 will overwrite
-    spin_sym: false    # placeholder -- Phase 3 will overwrite
+    max_weight: 2      # paper: max_weight=2
+    spin_sym: false    # paper: no spin_sym = False
     n_qubits: 784
   genomic-805:
-    max_weight: 2      # placeholder -- Phase 3 will overwrite
-    spin_sym: false    # placeholder -- Phase 3 will overwrite
+    max_weight: 2      # paper: max_weight=2
+    spin_sym: false    # paper: explicitly False
     n_qubits: 805
   scale_free:
-    max_weight: 2      # placeholder -- Phase 3 will overwrite
-    spin_sym: true     # placeholder -- Phase 3 will overwrite
+    max_weight: 2      # paper: max_weight=2 (ising-family)
+    spin_sym: false    # paper: no spin_sym = False
     n_qubits: 1000
