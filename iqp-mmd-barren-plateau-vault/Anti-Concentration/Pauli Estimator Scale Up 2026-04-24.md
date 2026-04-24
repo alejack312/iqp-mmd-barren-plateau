@@ -21,7 +21,7 @@ related:
 > Phase 4 of the IQP-MMD barren plateau project. We implemented a Parseval Monte Carlo estimator for the scaled second moment (AC proxy) and per-order marginal mismatch, validated it at n=16 against exact ground truth, then attempted to scale to five n≥256 datasets. All big-n training runs were blocked by an out-of-memory wall on the available hardware (16 GB RAM, no GPU). This note records: the n=16 validation as the headline quantitative result, the compute wall as a methodological finding, and the v2 hardware blockers.
 
 > [!success] Headline result — n=16 Parseval MC estimator validated
-> The estimator agrees with exact ground truth on 6 of 8 criteria (4 pass, 2 warn). The 2 fails are mechanistically understood: concentrated-distribution σ-underestimation (Ising val01, z=+4.83) and debias over-correction at k=4 on the Ising checkpoint (val02_k4, z=−24.33). Blobs checkpoint validates cleanly: val01 warn (z=+2.99), val02 at k=1/2/4 all pass or warn.
+> The estimator agrees with exact ground truth on 6 of 8 criteria (2 pass, 4 warn). The 2 fails are mechanistically understood: concentrated-distribution σ-underestimation (Ising val01, z=+4.83) and debias over-correction at k=4 on the Ising checkpoint (val02_k4, z=−24.33). Blobs checkpoint validates cleanly: val01 warn (z=+2.99), val02 at k=1/2/4 all pass or warn.
 
 ## 1. Method
 
@@ -33,7 +33,7 @@ where each sample $Y_m$ is the squared expectation value $\langle Z_a \rangle^2$
 
 Marginal mismatch $M_k$ is computed via the same MC sampling restricted to weight-$k$ Pauli subsets, with a Jensen-style debias (`sqrt(max(d^2 - sigma^2, 0))` applied per-bin, see commit `6e87fe0`).
 
-Implementation: [`src/iqp_bp/estimators/pauli_ac.py`](../../src/iqp_bp/estimators/pauli_ac.py)
+Implementation: [`src/iqp_bp/estimators/pauli.py`](../../src/iqp_bp/estimators/pauli.py)
 CLI: `python scripts/pauli_estimator_investigation.py validate --dataset <name> --ckpt <path>`
 
 ## 2. n=16 Validation
