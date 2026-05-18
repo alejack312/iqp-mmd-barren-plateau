@@ -1,0 +1,43 @@
+anti_concentration:
+  enabled: true
+  max_n: 8
+circuit:
+  family:
+  - lattice
+  lattice:
+    dimension: 2
+    range: 1
+  n_generators: 4*n
+  n_qubits:
+  - 16
+dataset:
+  n_samples: 128
+  type: ising
+estimation:
+  batch_size: 2
+  num_a_samples: 8
+  num_seeds: 100
+  num_z_samples: 32
+  use_jax: true
+experiment:
+  description: Variance sweep for 2D Lattice with Layer-Wise init
+  log_level: INFO
+  name: scaling_ac_smoke
+  output_dir: results/patch_test/lap_4
+  seed: 11
+init:
+  data_dependent:
+    scale: 0.1
+  data_dependent_exact:
+    scale: 0.1
+  layer_wise:
+    num_layers: 16
+    scale: 0.1
+  scheme:
+  - data_dependent
+kernel:
+  bandwidth:
+  - 1.0
+  type:
+  - gaussian
+param_init_file: results/patch_test/lap_4/runs\lattice__n16__gaussian__data_dependent__ising__sigma1p0\checkpoints\step_0100.npz

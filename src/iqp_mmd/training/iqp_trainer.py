@@ -63,7 +63,24 @@ def prepare_iqp_training(
 
     if param_init_file is not None:
         with open(param_init_file, "rb") as f:
-            params_init = jnp.array(pickle.load(f))
+            loaded_params = jnp.array(pickle.load(f))
+            
+            # --- THE layer by layer LOGIC ---
+            n_qubits = int(hyperparams["model_config"]["n_qubits"])
+            n_layers = int(hyperparams["model_config"]["n_layers"])
+            
+            # Calculate total parameters needed 
+            expected_size = n_qubits * n_layers 
+            
+            if loaded_params.size < expected_size:
+                # Pad the difference with exactly 0.0 (Identity) to fill the new layers safely
+                padding = jnp.zeros(expected_size - loaded_params.size)
+                params_init = jnp.concatenate([loaded_params, padding])
+                print(f"Greedy Load: Padded {loaded_params.size} params to {expected_size} with zeros.")
+            else:
+                params_init = loaded_params
+                print(f"Greedy Load: Loaded {loaded_params.size} params without padding.")
+            # --------------------------------
     else:
         params_init = initialize_from_data(
             gates,

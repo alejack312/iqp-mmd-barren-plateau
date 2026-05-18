@@ -70,6 +70,7 @@ def run(cfg: dict[str, Any]) -> list[dict[str, Any]]:
                 init_cfg=cfg["init"],
                 seed=derive_seed(streams[STREAM_THETA], "init"),
                 small_angle_std=setting.get("small_angle_std"),
+                param_init_file=cfg.get("param_init_file"),
             )
 
             kernel_params = _get_kernel_params(
@@ -339,10 +340,37 @@ def _make_theta(
     init_cfg: dict[str, Any],
     seed: int,
     small_angle_std: float | None = None,
+    param_init_file: str | None = None,
 ) -> np.ndarray:
     from iqp_bp.mmd.mixture import dataset_expectations_batch
+    import pickle
 
     m = G.shape[0]
+    # --- Layer by layer LOGIC ---
+    if param_init_file is not None:
+        print(f"GREEDY SYSTEM: Loading file {param_init_file}")
+        
+        # Load the .npz archive
+        data_archive = np.load(param_init_file)
+        
+        # Extract the actual theta array safely!
+        if "theta" in data_archive.files:
+            loaded_params = data_archive["theta"]
+        else:
+            # if it's named something else, find the 1D array
+            print(f"GREEDY SYSTEM WARNING: Keys found -> {data_archive.files}")
+            for key in data_archive.files:
+                if len(data_archive[key].shape) == 1:
+                    loaded_params = data_archive[key]
+                    break
+            
+        if loaded_params.size < m:
+            padding = np.zeros(m - loaded_params.size)
+            padded_theta = np.concatenate([loaded_params, padding])
+            print(f"GREEDY SYSTEM: Padded array from {loaded_params.size} to {m} parameters.")
+            return padded_theta
+        return loaded_params
+    # ----------------------------
     rng = np.random.default_rng(seed)
     if init_scheme == "uniform":
         low = init_cfg.get("uniform", {}).get("low", -np.pi)
@@ -418,3 +446,17 @@ def _setting_stem(setting: dict[str, Any]) -> str:
 
 def _format_scalar(value: float) -> str:
     return str(value).replace("-", "m").replace(".", "p")
+
+if __name__ == "__main__":
+    import argparse
+    import yaml
+
+    parser = argparse.ArgumentParser(description="Run IQP Training")
+    parser.add_argument("--hyperparams", type=str, required=True, help="Path to config file")
+    args = parser.parse_args()
+
+    with open(args.hyperparams, "r") as f:
+        config = yaml.safe_load(f)
+
+    # Execute the main run function
+    run(config)

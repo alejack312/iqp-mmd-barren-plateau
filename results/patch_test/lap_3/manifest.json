@@ -1,0 +1,12 @@
+[
+  {
+    "family": "lattice",
+    "kernel": "gaussian",
+    "init_scheme": "data_dependent",
+    "n": 16,
+    "bandwidth": 1.0,
+    "er_p_edge": null,
+    "small_angle_std": null,
+    "dataset_type": "ising"
+  }
+]

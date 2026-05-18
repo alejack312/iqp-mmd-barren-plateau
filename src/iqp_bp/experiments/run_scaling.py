@@ -260,32 +260,160 @@ def _make_model(
     )
 
 
+
+def make_hybrid_exact_theta(G, data, scale=0.1):
+    """
+    Recipe A: Initializes weight-1 generators to match single-qubit data averages exactly.
+    Uses Recipe B (parity scaling) for all other complex generators.
+    """
+    import numpy as np
+    from iqp_bp.mmd.mixture import dataset_expectations_batch
+    
+    m, n = G.shape
+    theta = np.zeros(m, dtype=np.float64)
+    
+    # Calculate the standard lightweight recipe (Recipe B) as a baseline for complex gates
+    base_theta = scale * np.asarray(dataset_expectations_batch(data, G), dtype=np.float64)
+    
+    # Calculate the exact feature means across the dataset
+    feature_means = data.mean(axis=0)
+    
+    for i in range(m):
+        row = G[i]
+        
+        # Check if the generator is a 1-qubit gate (Hamming weight == 1)
+        if np.sum(row) == 1:
+            qubit_index = np.argmax(row)
+            target_mean = np.clip(feature_means[qubit_index], 0.0, 1.0) 
+            
+            # Recipe A math: arcsin(sqrt(mean))
+            theta[i] = np.arcsin(np.sqrt(target_mean))
+        else:
+            # Fall back to Recipe B for 2-qubit or higher gates
+            theta[i] = base_theta[i]
+            
+    return theta
+
+
+
+def make_layer_wise_theta(G, data, num_layers, scheme="data_dependent", scale=0.1):
+    m = G.shape[0]
+    total_params = m * num_layers
+    theta = np.zeros(total_params, dtype=np.float64)
+    
+    # if scheme == "data_dependent_exact":
+    #     layer_1_init = make_hybrid_exact_theta(G, data, scale)
+    # else:
+    from iqp_bp.mmd.mixture import dataset_expectations_batch
+    layer_1_init = scale * np.asarray(dataset_expectations_batch(data, G), dtype=np.float64)
+    
+    theta[0:m] = layer_1_init
+    return theta
+
+
+###### make_theta function used for layer-wise training
+
 def _make_theta(
     *,
-    init_scheme,
-    G,
-    data,
-    init_cfg,
-    seed,
+    init_scheme: str,
+    G: np.ndarray,
+    data: np.ndarray,
+    init_cfg: dict[str, Any],
+    seed: int,
     small_angle_std: float | None = None,
-):
+    param_init_file: str | None = None,  
+) -> np.ndarray:
+    from iqp_bp.mmd.mixture import dataset_expectations_batch
+    import numpy as np
+
     m = G.shape[0]
+    
+    # --- Layer by layer LOGIC ---
+    if param_init_file is not None:
+        print(f"SYSTEM: Loading file {param_init_file} for Variance Check")
+        data_archive = np.load(param_init_file)
+        
+        if "theta" in data_archive.files:
+            loaded_params = data_archive["theta"]
+        else:
+            print(f"GREEDY SYSTEM WARNING: Keys found -> {data_archive.files}")
+            for key in data_archive.files:
+                if len(data_archive[key].shape) == 1:
+                    loaded_params = data_archive[key]
+                    break
+                    
+        if loaded_params.size < m:
+            padding = np.zeros(m - loaded_params.size)
+            padded_theta = np.concatenate([loaded_params, padding])
+            print(f"GREEDY SYSTEM: Padded array from {loaded_params.size} to {m} parameters.")
+            return padded_theta
+        return loaded_params
+    # ----------------------------
+
     rng = np.random.default_rng(seed)
     if init_scheme == "uniform":
-        lo = init_cfg.get("uniform", {}).get("low", -np.pi)
-        hi = init_cfg.get("uniform", {}).get("high", np.pi)
-        return rng.uniform(lo, hi, size=m)
+        low = init_cfg.get("uniform", {}).get("low", -np.pi)
+        high = init_cfg.get("uniform", {}).get("high", np.pi)
+        return rng.uniform(low, high, size=m)
+    if init_scheme == "identity":
+         return np.zeros(m)
     if init_scheme == "small_angle":
         std = small_angle_std
         if std is None:
             std = init_cfg.get("small_angle", {}).get("std", [0.1])
             std = std[0] if isinstance(std, list) else std
-        return rng.normal(0, float(std), size=m)
+        return rng.normal(0.0, float(std), size=m)
     if init_scheme == "data_dependent":
-        dd_cfg = init_cfg.get("data_dependent", {})
-        scale = dd_cfg.get("scale", 0.1)
+        scale = float(init_cfg.get("data_dependent", {}).get("scale", 0.1))
         return scale * np.asarray(dataset_expectations_batch(data, G), dtype=np.float64)
-    raise ValueError(f"Unknown init scheme {init_scheme!r}")
+    raise ValueError(f"unknown init scheme {init_scheme!r}")
+
+
+# def _make_theta(
+#     *,
+#     init_scheme,
+#     G,
+#     data,
+#     init_cfg,
+#     seed,
+#     small_angle_std: float | None = None,
+# ):
+#     m = G.shape[0]
+#     rng = np.random.default_rng(seed)
+    
+#     if init_scheme == "uniform":
+#         lo = init_cfg.get("uniform", {}).get("low", -np.pi)
+#         hi = init_cfg.get("uniform", {}).get("high", np.pi)
+#         return rng.uniform(lo, hi, size=m)
+        
+#     if init_scheme == "small_angle":
+#         std = small_angle_std
+#         if std is None:
+#             std = init_cfg.get("small_angle", {}).get("std", [0.1])
+#             std = std[0] if isinstance(std, list) else std
+#         return rng.normal(0, float(std), size=m)
+    
+#     if init_scheme == "identity":
+#         return np.zeros(m)
+        
+#     if init_scheme == "data_dependent":
+#         dd_cfg = init_cfg.get("data_dependent", {})
+#         scale = dd_cfg.get("scale", 0.1)
+#         from iqp_bp.mmd.mixture import dataset_expectations_batch
+#         return scale * np.asarray(dataset_expectations_batch(data, G), dtype=np.float64)
+
+#     if init_scheme == "layer_wise":
+#         lw_cfg = init_cfg.get("layer_wise", {})
+#         scale = lw_cfg.get("scale", 0.1)
+#         num_layers = lw_cfg.get("num_layers", 2)
+#         return make_layer_wise_theta(G, data, num_layers, scale)
+    
+#     # if init_scheme == "data_dependent_exact":
+#     #     dd_exact_cfg = init_cfg.get("data_dependent_exact", {})
+#     #     scale = dd_exact_cfg.get("scale", 0.1)
+#     #     return make_hybrid_exact_theta(G, data, scale)
+
+#     raise ValueError(f"Unknown init scheme {init_scheme!r}")
 
 
 def _get_kernel_params(kernel, kernel_cfg, *, bandwidth: float | None = None):

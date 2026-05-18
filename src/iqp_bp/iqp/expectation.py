@@ -47,7 +47,20 @@ def iqp_phase(
     sign = 1.0 - 2.0 * ((z_dot_G % 2).astype(np.float64))  # (-1)^{z·g_j}, shape (B, m)
 
     # Φ = 2 · Σ_j θ_j · (a·g_j mod 2) · (-1)^{z·g_j}
-    weighted = theta * a_dot_g  # (m,)
+
+
+    # Find the base number of connections (m)
+    m = a_dot_g.shape[-1]
+    
+    # If theta is a deep circuit (e.g., 8 params for 4 connections)
+    if theta.shape[-1] > m:
+        effective_theta = theta.reshape(-1, m).sum(axis=0)
+    else:
+        effective_theta = theta
+        
+    weighted = effective_theta * a_dot_g
+
+    
     return 2.0 * (sign @ weighted)  # (B,)
 
 
