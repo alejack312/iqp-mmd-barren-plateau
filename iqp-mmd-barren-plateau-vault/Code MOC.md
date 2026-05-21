@@ -43,6 +43,7 @@ Module-by-module documentation of the two packages in `src/`. The primary packag
 - [[Validation Runner]] — `iqp_bp/experiments/run_validation.py` — anti-concentration
 - [[Qiskit Runner]] — `iqp_bp/experiments/run_qiskit.py` — Qiskit cross-check
 - [[Forge Runner]] — `iqp_bp/experiments/run_forge.py` — structural modeling export
+- [[Forge Pipeline Overview]] — narrative overview of the whole Forge layer and what it has told us
 - [[Data Factory]] — `iqp_bp/experiments/data_factory.py` — dataset generation
 
 ### Qiskit Layer

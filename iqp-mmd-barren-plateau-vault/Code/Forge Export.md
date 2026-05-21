@@ -12,6 +12,11 @@ Writes an IQP hypergraph `G` to a `.frg` file that Forge can load for structural
 
 **File:** [`src/iqp_bp/forge/export_instances.py`](../src/iqp_bp/forge/export_instances.py)
 
+> [!tip] In plain English
+> This is the translator. In Python a circuit is a matrix of 0s and 1s that says which qubits each generator touches. Forge doesn't read matrices. It reads named things and how they relate: "Q0, Q1, Q2 are qubits. G0 is a generator. G0 touches Q0 and Q1. G1 touches Q1 and Q2. G0 and G1 share Q1."
+>
+> This file does that conversion. Everything downstream of it is Forge reasoning over the structured form, not over raw numpy.
+
 ## Public API
 
 ```python

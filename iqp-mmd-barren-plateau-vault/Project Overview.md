@@ -44,6 +44,10 @@ graph TD
 
 For the full walkthrough, see [[How a Scaling Run Works]].
 
+## Closing Report
+
+The project closeout is now collected in [[Final Findings - IQP MMD Barren Plateaus]]. Start there for the thesis-chapter narrative, then use [[Evidence Ledger]] and [[Pattern Mining Results]] for artifact-level provenance.
+
 ## Two Sibling Packages
 
 - **`iqp_bp`** — the barren plateau / gradient-variance study. Primary package for this vault.

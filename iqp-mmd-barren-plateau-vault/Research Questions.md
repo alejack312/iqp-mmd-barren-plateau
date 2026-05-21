@@ -10,6 +10,9 @@ tags:
 
 The project is organized around four central questions, each tied to specific experimental axes and analytic derivations.
 
+> [!summary] Closing synthesis
+> The current thesis-chapter synthesis is [[Final Findings - IQP MMD Barren Plateaus]]. The artifact-backed report reframes the final answer as: F4 gives a strong empirical plateau predicate over the completed sweeps, while anti-concentration alone is too weak to certify learned-distribution quality without target-vs-learned marginal diagnostics.
+
 ## Q1. Asymptotic Gradient Scaling
 
 Let $\mathcal{L}(\theta) = \mathrm{MMD}^2(p, q_\theta)$. Does

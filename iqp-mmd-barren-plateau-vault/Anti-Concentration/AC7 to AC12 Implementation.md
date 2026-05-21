@@ -21,7 +21,7 @@ date: 2026-04-19
 
 > [!important] Experiment status
 > Infrastructure: **built and tested** (35/35 tests pass; smoke run completes end-to-end).
-> Long experiments `AC11` (Ghosh–Kim) and `AC12` (σ sweep): **configs checked in, sweeps not yet executed** — the numbers reported below come from the `training_smoke` run only.
+> Long experiments `AC11` (Ghosh-Kim) and `AC12` (sigma sweep): **executed**. `AC11` results are summarized in [[AC11 Ghosh-Kim Learned AC Results 2026-05-08]]; `AC12` results are summarized in [[AC12 Bandwidth Sweep Results 2026-04-21]].
 
 > [!warning] Conceptual refinement — read this first
 > After writing this note we realized the supervisor's framing conflates two distinct properties: strict [[Anti-Concentration|anti-concentration]] of one distribution vs **agreement on high-order marginals** between two distributions. [[References#Paper 2305.02881|Rudolph 2305.02881]] is really about the second; the learned distributions in [[References#Paper 2503.02934|Recio-Armengol/Ahmed/Bowles]] almost certainly pass strict AC, but trivially — they are *smoother than the target*. The real question is whether they match high-order marginals, and the bandwidths used in that paper (average Pauli weight $\le 17$ even at $n = 1000$) guarantee the loss could not have enforced such agreement. See [[Anti-Concentration vs Marginal Agreement]] for the full analysis and the resulting refinements to `AC11`/`AC12` framing.
@@ -82,8 +82,8 @@ Each `trajectory.jsonl` row carries:
 
 For `n ≤ exact_probability_max_n` (default 12), the AC check uses the exact probability vector. For larger $n$, the runner draws `sample_count` bitstrings from the exact probability vector (cap `sample_from_exact_probability_max_n = 20`) and runs the histogram-mode AC checker. The `AC11` large-$n$ config uses this sampled mode at $n=20$ with `sample_count=8192`.
 
-> [!warning] AC11 hasn't been run yet
-> The `ghosh_kim_small_n.yaml` and `ghosh_kim_large_n_sampled.yaml` sweeps will populate `results/ac_ghosh_kim/…/trajectory.jsonl` with the above fields at step 0, every 5 steps, and the final step. The only trajectory that exists right now is the smoke run — see [[#4. What the Smoke Run Told Us]].
+> [!success] AC11 has been run
+> The `ghosh_kim_small_n.yaml` and `ghosh_kim_large_n_sampled.yaml` sweeps populate `results/ac_ghosh_kim/.../trajectory.jsonl` with the above fields at step 0, every 5 steps, and the final step. See [[AC11 Ghosh-Kim Learned AC Results 2026-05-08]].
 
 ### Q2 — Do learned marginals match targets, and how does that evolve with σ?
 
@@ -181,7 +181,7 @@ Two immediate takeaways, still conditional on running the full sweeps:
 > **Short version:** yes, almost certainly — but in a way that *works against* the paper's framing, not for it. See [[Anti-Concentration vs Marginal Agreement]].
 > **Why:** [[References#Paper 2503.02934|Recio-Armengol/Ahmed/Bowles]] use bandwidths that probe average Pauli weight $\le 17$ at $n$ up to 1000. Training under such a kernel cannot enforce agreement at weight $\ge 3$, and their own covariance plots (§9.5) show the learned distribution has *weaker* correlations than the target. The learned $q_\theta$ is smoother than $p$ — which is anti-concentrated by construction, trivially. The real question (what the supervisor is actually after) is whether $q_\theta$ matches $p$ on high-order marginals; that is what `AC11`/`AC12` test.
 > **Infrastructure answer:** every trajectory row carries both `ac_scaled_second_moment` and the interpretable `β̂(α)` diagnostic. Plot the *gap* between target and learned AC over training — a growing gap means training is smoothing the model away from the target.
-> **Empirical status:** `AC11` sweeps not yet run; configs ready.
+> **Empirical status:** `AC11` sweeps are complete; see [[AC11 Ghosh-Kim Learned AC Results 2026-05-08]].
 
 > [!faq]+ "So what's the supervisor really asking?"
 > She's asking for **$M_k(\theta) \equiv \text{mean}_{\lvert a\rvert = k}(\langle Z_a\rangle_p - \langle Z_a\rangle_{q_\theta})^2$** plotted as a function of training step and bandwidth. That is already `mean_fourier_squared_error` on every trajectory row. The missing piece is a heatmap plot over $(k, \text{step})$ and a reference overlay of $\tau^k$ on the final step. No new code; plotting only.
@@ -232,14 +232,14 @@ Two immediate takeaways, still conditional on running the full sweeps:
 
 Matches handoff message, plus the additions from [[Anti-Concentration vs Marginal Agreement#6. What Changes in Our Plan|the conceptual refinement]].
 
-- [ ] Run `AC11` small-$n$ sweep → `results/ac_ghosh_kim/small_n_exact/`.
-- [ ] Run `AC11` large-$n$ sampled sweep → `results/ac_ghosh_kim/large_n_sampled/`.
-- [ ] Run `AC12` σ sweep → `results/bandwidth_marginal_sweep/`.
-- [ ] **Add** `compute_power_spectrum(data, max_order)` to `src/iqp_bp/distributions/marginal_metrics.py` — emit `power_spectrum.json` once per run (target does not change during training). Ties `AC12` to the data as the supervisor asked.
-- [ ] **Add** target `scaled_second_moment` to each run summary so the learned-vs-target AC *gap* is visible at a glance.
-- [ ] **Add** `scripts/plot_m_k_heatmap.py` — heatmap of $M_k$ over $(k, \text{step})$, one per $\sigma$, with $\tau^k$ overlay on the final-step row. This is the actual deliverable the supervisor is asking for.
-- [ ] Write the results subsection in [[Anti-Concentration]] with pass/fail per (σ, family, $n$) cell **and** the learned-vs-target AC gap.
-- [ ] Write [[Bandwidth Marginals]] interpretation (the `docs/technical/bandwidth-marginals.md` stub explicitly refuses to claim results until the sweep runs — preserve that discipline).
+- [x] Run `AC11` small-$n$ sweep -> `results/ac_ghosh_kim/small_n_exact/`.
+- [x] Run `AC11` large-$n$ sampled sweep -> `results/ac_ghosh_kim/large_n_sampled/`.
+- [x] Run `AC12` sigma sweep -> `results/bandwidth_marginal_sweep/`.
+- [x] **Add** `compute_power_spectrum(data, max_order)` to `src/iqp_bp/distributions/marginal_metrics.py` — emit `power_spectrum.json` once per run (target does not change during training). Ties `AC12` to the data as the supervisor asked.
+- [x] **Add** target `scaled_second_moment` to each run summary so the learned-vs-target AC *gap* is visible at a glance.
+- [x] **Add** `scripts/plot_m_k_heatmap.py` — heatmap of $M_k$ over `(k, step)`, one per sigma, with tau^k overlay on the final-step row. This is the actual deliverable the supervisor is asking for.
+- [x] Write the results subsection in [[Anti-Concentration]] with pass/fail per cell **and** the learned-vs-target AC gap.
+- [x] Write [[Bandwidth Marginals]] interpretation via [[AC12 Bandwidth Sweep Results 2026-04-21]].
 
 ---
 

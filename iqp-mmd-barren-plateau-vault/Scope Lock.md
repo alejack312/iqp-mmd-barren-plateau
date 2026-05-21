@@ -42,7 +42,7 @@ $$
 | Kernel | Formula | Status |
 |---|---|---|
 | Gaussian | $e^{-H/\sigma^2}$ (pm-encoding) / $e^{-H/(2\sigma^2)}$ (binary) | **Primary** |
-| Laplacian | $e^{-\sqrt{H}/\sigma}$ | Phase 2, stub |
+| Laplacian | $e^{-\sqrt{H}/\sigma}$ | Phase 2, finite-cube spectrum locked |
 | Polynomial $d$ | $(x \cdot y/n + c)^d$ | Legacy |
 | Linear | $x \cdot y / n$ | Legacy baseline |
 
