@@ -55,10 +55,10 @@ which has two big practical payoffs:
 The Laplacian kernel has the form $e^{-\sqrt{H}/\sigma}$, and $\sqrt{H}$ does **not** decompose qubit-by-qubit. Its spectral weights require a Krawtchouk polynomial sum:
 
 $$
-w_L(a; \sigma) = \frac{1}{2^n}\sum_h K_{|a|}(h; n) e^{-\sqrt{h}/\sigma}
+w_L(a; \sigma) = \frac{1}{2^n}\sum_h K_h(|a|; n) e^{-\sqrt{h}/\sigma}
 $$
 
-These weights can be **negative** or **non-monotone** in $|a|$, which is why the current sampler is an explicit stub and the MMD² decomposition is not yet locked. See [[Laplacian Kernel]] and [[TODO Roadmap|T2]].
+The implemented finite-cube path now validates that these coefficients are non-negative up to numerical tolerance, and it fails loudly if that contract is violated. See [[Laplacian Kernel]] and [[TODO Roadmap|T2]].
 
 ## Related
 

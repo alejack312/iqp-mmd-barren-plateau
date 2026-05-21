@@ -298,16 +298,13 @@ This is exactly the gap the project is set up to close empirically. The scalar $
 ## What "locked" does NOT mean
 
 - **Not mathematically proven forever.** The locked formula is the one the project is comparing against during this study phase. If the derivation is later tightened, the lock moves.
-- **Not all kernels.** Gaussian is locked. Laplacian is explicitly stubbed until its decomposition is derived. Multi-scale Gaussian is validated but not fully exact-mixture-checked.
+- **Not all kernels.** Gaussian is locked. Laplacian is locked for the implemented finite-cube spectral convention. Multi-scale Gaussian is validated but not fully exact-mixture-checked.
 - **Not frozen as a test.** Tests check invariants like "sum of weights equals something sensible" and "MC path agrees with exact on small $n$," not frozen floats.
 
 ---
 
 ## Remaining lock work
 
-From [[TODO Roadmap|T2]]:
-
-- Laplacian MMD² decomposition derivation + lock
 - Multi-scale Gaussian exact mixture validation
 - Close the gap between Recio-Armengol et al. 2025 Eq. 49 and a true variance bound for $\partial_{\theta_i}\mathrm{MMD}^2$ in the interference-full regime (currently an open numerics-first question; see [[Gradient Variance]])
 

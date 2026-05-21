@@ -12,6 +12,11 @@ Exports IQP hypergraph instances to Forge-compatible format for structural model
 
 **File:** [`src/iqp_bp/experiments/run_forge.py`](../src/iqp_bp/experiments/run_forge.py)
 
+> [!tip] In plain English
+> This is the Python code that talks to Forge. For every circuit in the dataset, it writes a small `.frg` file with three things inside: the circuit's structure, the question we want answered (like "does this circuit satisfy the plateau rule?"), and the boundary conditions. It hands that file to Racket, reads the SAT or UNSAT answer back, and writes down one row of result.
+>
+> Translator and scribe. Turns Python data into Forge questions, records every answer in `results.jsonl`.
+
 ## What Forge Is
 
 [Forge](https://forge-fm.github.io/forge-documentation/) is a **bounded-model-finding tool** descended from Alloy, used here for formal structural reasoning about small instances.

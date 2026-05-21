@@ -38,14 +38,13 @@ In a barren plateau study, a factor-of-2 mismatch in the kernel decay constant c
 ## Where Parity Is Currently Locked
 
 - **Gaussian** — locked, see [[Gaussian Convention]]
-- **Laplacian** — explicit stub, parity not yet achieved
+- **Laplacian** — finite-cube spectral parity locked, see [[Laplacian Kernel]]
 - **Multi-scale Gaussian** — implemented, exact validation pending
 - **IQP expectation** — locked, the phase formula is the same in docs and code
-- **MMD² estimator** — locked for Gaussian only
+- **MMD² estimator** — locked for Gaussian and finite-cube Laplacian
 
 ## Where Parity Is Open
 
-- **Laplacian MMD² decomposition** — [[TODO Roadmap|T2]]
 - **Small-n exact MMD² cross-check** for each supported kernel — D2.1
 
 ## Related

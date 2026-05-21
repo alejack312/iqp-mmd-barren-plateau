@@ -21,10 +21,11 @@ The module that exposes kernel evaluators, spectral weights, and Z-word samplers
 - `gaussian_sample_a(n, num_a_samples, sigma, rng)` — Z-word sampler
 - `_gaussian_tau(sigma)` — the locked $\tau = \tanh(1/(4\sigma^2))$
 
-### Laplacian (Phase 2, stub)
+### Laplacian (Phase 2, finite-cube locked)
 
 - `laplacian_kernel(x, y, sigma)`
 - `laplacian_sample_a(n, num_a_samples, sigma, rng)`
+- `laplacian_spectral_weights(n, sigma)` — validated per-Hamming-weight Walsh coefficients
 - `_laplacian_spectral_weight(n, w, sigma)`
 
 ### Multi-Scale Gaussian (Phase 2)
@@ -72,7 +73,6 @@ Used by both [[MMD Loss Module|`mmd.loss`]] and [[Gradients Module|`mmd.gradient
 
 ## Open TODOs in This Module
 
-- **T2** — keep Laplacian path as explicit stub until MMD² decomposition is derived
 - **D8.1** — validate multi-scale Gaussian against exact mixture and add component sweep to the experiment grid
 
 ## Related

@@ -8,6 +8,9 @@ tags:
 
 # Anti-Concentration
 
+> [!summary] Closing report
+> The final synthesis is [[Final Findings - IQP MMD Barren Plateaus]]. The closing position is: strict AC is necessary context but not enough for the learned-distribution claim; report target-vs-learned scaled second moment and per-order marginal mismatch alongside any AC pass/fail statement.
+
 > [!tip] Presenting this next week?
 > Start at [[Weekly Task - Anti-Concentration]] — a plain-language task brief with the two definitions, the function sketch, a ready-to-run example, and a Q&A section for likely supervisor questions. Then come back here for the deeper technical writeup.
 
@@ -18,6 +21,12 @@ tags:
 
 > [!success] 2026-04-24 — Parseval MC estimator validated at n=16; compute wall documented
 > [[Pauli Estimator Scale Up 2026-04-24]] records the Phase 4 result: a Parseval Monte Carlo estimator for scaled_second_moment and per-order marginal mismatch, validated against exact ground truth on the same two checkpoints. 6/8 criteria pass or warn; 2 diagnosed failures (concentrated-distribution σ-underestimation, debias over-correction at k=4). Big-n training blocked at n=484 (dwave OOM); compute wall documented as a methodological finding. See the note for the full validation table, loss trajectory, and v2 hardware requirements.
+
+> [!success] 2026-05-03 - Grid'5000 paper-fidelity run completed, including native genomic-805
+> [[Grid5000 Native iqp_mmd AC and Marginals 2026-05-03]] is the presentation-ready writeup for the Nancy run. Headline: learned IQP-MMD distributions are **concentrated, not anti-concentrated**, because the targets are concentrated. Ising matches target concentration and marginals best; blobs is harder; native `genomic-805` completes with estimator-based AC and low-order marginal diagnostics through `k = 8`.
+
+> [!success] 2026-05-08 - AC11 Ghosh-Kim exact and sampled cells completed
+> [[AC11 Ghosh-Kim Learned AC Results 2026-05-08]] closes the remaining learned-distribution AC TODO. The exact `n = 9` cell and sampled `n = 20` cell both ran through `run-training`, with per-step learned AC, marginal sidecars, target-vs-learned AC gaps, and target `power_spectrum.json` sidecars.
 
 A distribution-shape property distinct from (and complementary to) [[Gradient Variance|gradient trainability]]. This is the "other" validation axis in the project.
 
@@ -127,10 +136,12 @@ As of 2026-04-19 the AC check also runs at every persisted step of a training tr
 > [!warning] Strict AC is the wrong question for this project
 > The supervisor's 2026-04-19 ask was framed as "were the learned distributions anti-concentrated?" but what she actually wants is **agreement on high-order marginals**, which is a property *relating* two distributions. Learned distributions in [[References#Paper 2503.02934|Recio-Armengol et al.]] almost certainly pass strict AC — trivially, because training smoothed them *away* from the target's mode structure. See [[Anti-Concentration vs Marginal Agreement]] for the full unpacking.
 
-Pending results: [[AC7 to AC12 Implementation#6. What's Still Missing|Ghosh–Kim small-$n$ and large-$n$ sweeps]].
+Completed results: [[AC11 Ghosh-Kim Learned AC Results 2026-05-08]] and [[AC12 Bandwidth Sweep Results 2026-04-21]].
 
 ## Related
 
+- [[Grid5000 Native iqp_mmd AC and Marginals 2026-05-03]] - 2026-05-03 paper-fidelity Grid'5000 run, with native `genomic-805`
+- [[AC11 Ghosh-Kim Learned AC Results 2026-05-08]] - exact small-n and sampled larger-n learned-distribution AC cells
 - [[iqp_mmd AC Investigation 2026-04-23]] — 2026-04-23 end-to-end test of the paper's stack
 - [[Pauli Estimator Scale Up 2026-04-24]] — 2026-04-24 Phase 4 writeup: Parseval MC estimator validated at n=16 + dwave compute wall
 - [[iqp_mmd AC Investigation - Plain English Walkthrough]] — non-expert explainer
@@ -144,3 +155,5 @@ Pending results: [[AC7 to AC12 Implementation#6. What's Still Missing|Ghosh–Ki
 - [[Design Decisions - AC7 to AC12]] — scope decisions for the supervisor's 2026-04-19 extension
 - [[Bandwidth Marginals]] — σ sweep (AC12)
 - [[References#Paper 2512.24801]]
+- [[Final Findings - IQP MMD Barren Plateaus]]
+- [[Evidence Ledger]]

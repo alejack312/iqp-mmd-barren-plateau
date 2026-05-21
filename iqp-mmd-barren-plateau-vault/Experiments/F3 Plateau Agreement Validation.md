@@ -14,6 +14,11 @@ The first validation of the F3 Forge pipeline against a labeled scaling dataset 
 > [!info] Purpose
 > Produce the first agree/disagree table from the F3 pipeline. Stress-test the structural theory (`bounded_degree ∧ high_overlap`) against real observed plateau labels across a diversified sweep of circuit families and initialization schemes.
 
+> [!tip] In plain English
+> First attempt at a plateau-predicting rule. The idea was that a circuit's shape alone, specifically how connected its generators are, might be enough to tell when training will fail.
+>
+> It wasn't. The rule caught 0 of 88 real failures, which is worse than a flat "nothing ever plateaus" guess. The real lesson: where training starts (the initial parameters) matters a lot more than the circuit's shape. That's what pushed us toward F4.
+
 ## Data Provenance — where every input came from
 
 All data used in this run is **generated locally by the project's own runners**. Nothing is downloaded, nothing is hand-authored. Both the label source and the Forge library come from the committed repo.

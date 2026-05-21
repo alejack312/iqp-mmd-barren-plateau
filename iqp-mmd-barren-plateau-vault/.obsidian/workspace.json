@@ -11,30 +11,12 @@
             "id": "de5a92f172af4589",
             "type": "leaf",
             "state": {
-              "type": "markdown",
+              "type": "image",
               "state": {
-                "file": "IQP Circuits.md",
-                "mode": "source",
-                "source": false
+                "file": "Anti-Concentration/ac_and_marginals_summary.png"
               },
-              "icon": "lucide-file",
-              "title": "IQP Circuits"
-            }
-          }
-        ]
-      },
-      {
-        "id": "26ba2cc68252f7a0",
-        "type": "tabs",
-        "children": [
-          {
-            "id": "a47d00a681ede4c2",
-            "type": "leaf",
-            "state": {
-              "type": "graph",
-              "state": {},
-              "icon": "lucide-git-fork",
-              "title": "Graph view"
+              "icon": "lucide-image",
+              "title": "ac_and_marginals_summary"
             }
           }
         ]
@@ -69,7 +51,7 @@
             "state": {
               "type": "search",
               "state": {
-                "query": "2n",
+                "query": "second-",
                 "matchingCase": false,
                 "explainSearch": false,
                 "collapseAll": false,
@@ -199,33 +181,36 @@
       "bases:Create new base": false
     }
   },
-  "active": "de5a92f172af4589",
+  "active": "25d6bdd3e4c7cb19",
   "lastOpenFiles": [
-    "Locked MMD² Derivation.md",
-    "Gaussian Convention.md",
-    "Data-Dependent Initialization Across Architectures.md",
-    "Project Overview.md",
-    "Qiskit Circuit Builder.md",
-    "RNG.md",
-    "Weekly Task - Anti-Concentration.md",
-    "Presentation - Anti-Concentration.md",
-    "Anti-Concentration.md",
-    "Initialization Schemes.md",
-    "Implementation Choices.md",
-    "Erdos-Renyi Family.md",
-    "Complete Graph Family.md",
-    "Hypergraph Families.md",
-    "Hypothesis Strategies.md",
-    "Checkpoint Bridge.md",
-    "Welcome.md",
-    "Binary Matrix.md",
-    "Generator.md",
-    "References.md",
-    "Glossary.md",
-    "Experiments MOC.md",
-    "TODO Roadmap.md",
-    "Scope Lock.md",
-    "SMART Spec.md",
-    "Proposal.md"
+    "Anti-Concentration/grid5000_bandwidth_marginal_summary_2026-05-18.png",
+    "Anti-Concentration/grid5000_ac_marginals_summary_2026-05-03.png",
+    "Anti-Concentration/Grid5000 Bandwidth Marginal Error Sweep 2026-05-18.md",
+    "Anti-Concentration/iqp_mmd AC Investigation 2026-04-23.md",
+    "Anti-Concentration/Grid5000 Native iqp_mmd AC and Marginals 2026-05-03.md",
+    "Anti-Concentration/Genomic iqp_mmd AC Investigation 2026-04-29.md",
+    "Anti-Concentration/Genomic Dataset Anti-Concentration and Probabilities.md",
+    "Anti-Concentration/How Probabilities Are Obtained From Paper Datasets.md",
+    "Datasets/Data-Dependent Initialization Across Architectures.md",
+    "Report/Figure Index.md",
+    "Report/Pattern Mining Results.md",
+    "Report/Evidence Ledger.md",
+    "Report/Final Findings - IQP MMD Barren Plateaus.md",
+    "Report",
+    "Anti-Concentration/AC11 Ghosh-Kim Learned AC Results 2026-05-08.md",
+    "Anti-Concentration/Anti-Concentration.md",
+    "Anti-Concentration/Misattributed Plots Forensic 2026-04-23.md",
+    "Anti-Concentration/iqp_mmd AC Investigation - Plain English Walkthrough.md",
+    "Anti-Concentration/Pauli Estimator Scale Up 2026-04-24.md",
+    "Anti-Concentration/ac_and_marginals_summary.png",
+    "Anti-Concentration/AC12 Bandwidth Sweep Results 2026-04-21.md",
+    "Anti-Concentration/Codex Audit - spin_sym Export Gap.md",
+    "Anti-Concentration/AC7 to AC12 Implementation.md",
+    "Anti-Concentration/Weekly Task - Anti-Concentration.md",
+    "Anti-Concentration/Presentation - Anti-Concentration.md",
+    "Anti-Concentration/Design Decisions - AC7 to AC12.md",
+    "Experiments/F3 Plateau Agreement Validation.md",
+    "Forge Pipeline Overview.md",
+    "Code/Scaling Runner.md"
   ]
 }

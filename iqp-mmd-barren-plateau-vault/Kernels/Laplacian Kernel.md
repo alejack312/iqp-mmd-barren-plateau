@@ -23,10 +23,10 @@ Unlike the Gaussian, the Laplacian decay in Hamming distance is **sub-exponentia
 The exact Walsh/Fourier decomposition uses Krawtchouk polynomials:
 
 $$
-w_L(a; \sigma) = \frac{1}{2^n} \sum_{h=0}^{n} K_{|a|}(h; n) \cdot e^{-\sqrt{h}/\sigma}
+w_L(a; \sigma) = \frac{1}{2^n} \sum_{h=0}^{n} K_h(|a|; n) \cdot e^{-\sqrt{h}/\sigma}
 $$
 
-where $K_k(x; n) = \sum_j (-1)^j \binom{x}{j}\binom{n-x}{k-j}$ is the Krawtchouk polynomial.
+where $K_h(k; n) = \sum_j (-1)^j \binom{k}{j}\binom{n-k}{h-j}$ is the Krawtchouk polynomial that sums the character of a fixed weight-$k$ observable over all bitstrings at Hamming distance $h$.
 
 In the code (`_laplacian_spectral_weight`):
 
@@ -34,18 +34,29 @@ In the code (`_laplacian_spectral_weight`):
 def _laplacian_spectral_weight(n, w, sigma):
     total = 0.0
     for h in range(n + 1):
-        total += _krawtchouk(w, h, n) * np.exp(-np.sqrt(h) / sigma)
+        total += _krawtchouk(h, w, n) * np.exp(-np.sqrt(h) / sigma)
     return total / (2**n)
 ```
 
 ## Sampling Status
 
-> [!warning] Explicit stub
-> The current Laplacian sampler is an **approximate path** — see the `TODO T2` in `mmd/kernel.py`. It computes spectral weights via the Krawtchouk sum above, then samples Hamming weights proportional to $\binom{n}{w} \cdot w_L(n, w, \sigma)$.
+> [!success] Locked finite-cube path
+> The Laplacian sampler now uses the same Krawtchouk/Walsh coefficients as the exact MMD path. It samples Hamming weights proportional to $\binom{n}{w} \cdot w_L(n, w, \sigma)$, then samples a uniform mask of that weight.
 >
-> The MMD² decomposition with Laplacian kernel is not yet derived to the same level of rigor as the Gaussian. The implementation is marked as a stub and should not be trusted for final scaling claims until the derivation is locked.
+> The implementation no longer clips negative coefficients or takes absolute values. Coefficients must be finite and non-negative up to numerical tolerance; otherwise the kernel path raises `ValueError` instead of producing an approximate MMD under the Laplacian name.
 
 See [[TODO Roadmap|T2]] and [[Kernel Module]].
+
+## Validation Contract
+
+The code validates the Laplacian path in three ways:
+
+- direct kernel reconstruction on small Boolean cubes:
+  $k_L(x,y) = \sum_a w_L(a;\sigma)\chi_a(x)\chi_a(y)$
+- exact small-$n$ MMD agreement between direct pairwise kernel MMD and the spectral observable sum
+- sampler agreement with the normalized per-order spectral mass
+
+This locks the implementation convention for finite-$n$ experiments. It does not automatically promote Laplacian results into the primary Gaussian-only claims.
 
 ## Why It's Interesting
 
@@ -62,4 +73,4 @@ Phase 2 of the sweep — added after the Gaussian regime is fully characterized.
 - [[Gaussian Kernel]]
 - [[Kernel Module]]
 - [[Kernel Spectral Decomposition]]
-- [[TODO Roadmap]] — T2 is the open derivation work
+- [[TODO Roadmap]] — T2 is complete
