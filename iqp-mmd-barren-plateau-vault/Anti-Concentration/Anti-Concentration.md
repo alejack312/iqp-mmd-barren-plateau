@@ -11,6 +11,14 @@ tags:
 > [!tip] Presenting this next week?
 > Start at [[Weekly Task - Anti-Concentration]] — a plain-language task brief with the two definitions, the function sketch, a ready-to-run example, and a Q&A section for likely supervisor questions. Then come back here for the deeper technical writeup.
 
+> [!success] 2026-04-23 — the paper's actual learned distributions, tested
+> [[iqp_mmd AC Investigation 2026-04-23]] finally answers the supervisor's question on `iqp_mmd`'s own training stack for two paper datasets at `n = 16`. Headline: learned `q_θ` is **not** anti-concentrated; Ising matches target on every marginal order, blobs only at low orders. Includes a [[Codex Audit - spin_sym Export Gap|Codex-discovered bug in the checkpoint bridge]] (silently drops `spin_sym=True`) that we had to work around.
+> - Plain-language walkthrough: [[iqp_mmd AC Investigation - Plain English Walkthrough]]
+> - ==Why the supervisor was asked about this in the first place==: [[Misattributed Plots Forensic 2026-04-23]] — a teammate attributed pre-existing AC plots to the paper; they were actually on synthetic `product_bernoulli` / `binary_mixture` data.
+
+> [!success] 2026-04-24 — Parseval MC estimator validated at n=16; compute wall documented
+> [[Pauli Estimator Scale Up 2026-04-24]] records the Phase 4 result: a Parseval Monte Carlo estimator for scaled_second_moment and per-order marginal mismatch, validated against exact ground truth on the same two checkpoints. 6/8 criteria pass or warn; 2 diagnosed failures (concentrated-distribution σ-underestimation, debias over-correction at k=4). Big-n training blocked at n=484 (dwave OOM); compute wall documented as a methodological finding. See the note for the full validation table, loss trajectory, and v2 hardware requirements.
+
 A distribution-shape property distinct from (and complementary to) [[Gradient Variance|gradient trainability]]. This is the "other" validation axis in the project.
 
 > [!important] Gradients are not distributions
@@ -52,7 +60,7 @@ Two primary fields, two different roles:
 
 | Field | Formula | Role |
 |---|---|---|
-| `scaled_second_moment` | $2^n \sum_x p(x)^2$ | Primary scalar check; matches the paper's second-moment form exactly |
+| `scaled_second_moment` | $2^n \sum_x p(x)^2$ | Primary scalar check; matches the paper's second-moment form exactly. ==Use the magnitude, not `passes_second_moment_threshold`== — that flag is [[Codex Audit - spin_sym Export Gap#3. Collateral findings (not spin_sym)\|vacuous]] (threshold hardcoded to 1.0, which every distribution passes). |
 | `beta_hat(alpha)` | $2^{-n}\|\{x : p(x) \ge \alpha 2^{-n}\}\|$ | Primary interpretable diagnostic; answers "what fraction of the space has at least uniform-scale weight?" |
 
 Supporting diagnostics:
@@ -123,6 +131,11 @@ Pending results: [[AC7 to AC12 Implementation#6. What's Still Missing|Ghosh–Ki
 
 ## Related
 
+- [[iqp_mmd AC Investigation 2026-04-23]] — 2026-04-23 end-to-end test of the paper's stack
+- [[Pauli Estimator Scale Up 2026-04-24]] — 2026-04-24 Phase 4 writeup: Parseval MC estimator validated at n=16 + dwave compute wall
+- [[iqp_mmd AC Investigation - Plain English Walkthrough]] — non-expert explainer
+- [[Codex Audit - spin_sym Export Gap]] — the bridge bug Codex caught
+- [[Misattributed Plots Forensic 2026-04-23]] — audit trail for the "plots came from the paper" confusion
 - [[Walsh-Hadamard Transform]]
 - [[IQP Classical Sampling]]
 - [[Validation Runner]]
