@@ -1,13 +1,13 @@
 experiment:
   name: scaling_ac_smoke
-  description: "Variance sweep for 2D Lattice with Layer-Wise init"
+  description: "Uniform graph"
   seed: 11
-  output_dir: results/patch_test/baseline_ising
+  output_dir: results/Uniform
   log_level: INFO
 
 circuit:
   family: [lattice]
-  n_qubits: [16]  
+  n_qubits: [4, 9, 16, 25 ]  
   n_generators: "n"
   lattice:
     dimension: 2
@@ -18,7 +18,7 @@ kernel:
   bandwidth: [1.0]
 
 init:
-  scheme: [data_dependent]
+  scheme: [uniform]
   data_dependent:          
     scale: 0.1
   layer_wise:

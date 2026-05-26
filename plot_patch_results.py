@@ -50,6 +50,6 @@ def plot_combined_variance(jsonl_path: str, target_n: int):
     plt.show()
 
 if __name__ == "__main__":
-    jsonl_file = "results/patch_test/patch_variance_results.jsonl" 
+    jsonl_file = "results/patch_final/patch_variance_results.jsonl" 
     
     plot_combined_variance(jsonl_file, target_n=16)
